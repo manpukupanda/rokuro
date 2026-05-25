@@ -45,9 +45,28 @@
 {% if selected_video and selected_video['status'] == 'ready' %}
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 <script>
-  (function () {
+  (async function () {
     const video = document.getElementById('player');
-    const src = '/stream/{{ selected_video["public_id"] }}/playlist.m3u8';
+    const videoId = {{ selected_video["public_id"]|tojson }};
+    const goroPlaybackBaseUrl = {{ goro_playback_base_url|tojson }};
+
+    let token = '';
+    try {
+      const tokenResponse = await fetch(`/stream/${encodeURIComponent(videoId)}/token`);
+      if (!tokenResponse.ok) {
+        throw new Error('Failed to issue playback token');
+      }
+      const tokenPayload = await tokenResponse.json();
+      token = tokenPayload.token || '';
+    } catch (error) {
+      console.error(error);
+      return;
+    }
+
+    const playlistUrl = new URL(`${goroPlaybackBaseUrl}/videos/${encodeURIComponent(videoId)}/playlist`);
+    playlistUrl.searchParams.set('token', token);
+    const src = playlistUrl.toString();
+
     if (video.canPlayType('application/vnd.apple.mpegurl')) {
       video.src = src;
       return;

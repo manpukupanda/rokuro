@@ -9,7 +9,7 @@ from urllib.parse import quote
 import bcrypt
 import httpx
 from fastapi import FastAPI, Form, Request, UploadFile
-from fastapi.responses import PlainTextResponse, RedirectResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
@@ -81,6 +81,7 @@ def base_context(request: Request, **kwargs: Any) -> dict[str, Any]:
         "request": request,
         "current_user": get_current_user_optional(request),
         "flashes": pop_flash(request),
+        "goro_playback_base_url": GORO_PLAYBACK_BASE_URL.rstrip("/"),
         **kwargs,
     }
 
@@ -280,6 +281,25 @@ def stream_playlist(request: Request, video_id: str):
         rewrite_playlist(response.text),
         media_type="application/vnd.apple.mpegurl",
     )
+
+
+@app.get("/stream/{video_id}/token")
+def stream_token(request: Request, video_id: str):
+    user = get_current_user_optional(request)
+    video = get_video_by_id(video_id)
+    if not video:
+        return JSONResponse({"error": "not_found"}, status_code=404)
+
+    visibility = video.get("visibility")
+    if visibility == "private" and not user:
+        return JSONResponse({"error": "login_required"}, status_code=403)
+
+    try:
+        token_resp = goro_post(f"/videos/{quote(video_id)}/tokens")
+    except GoroAPIError:
+        return JSONResponse({"error": "token_issue_failed"}, status_code=502)
+
+    return {"token": token_resp.get("token", "")}
 
 
 @app.get("/login")
