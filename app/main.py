@@ -9,7 +9,7 @@ from urllib.parse import quote
 import bcrypt
 import httpx
 from fastapi import FastAPI, Form, Request, UploadFile
-from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
@@ -217,16 +217,6 @@ def get_video_by_id(video_id: str) -> dict[str, Any] | None:
     return None
 
 
-def rewrite_playlist(playlist: str) -> str:
-    lines = []
-    for line in playlist.splitlines():
-        if not line or line.startswith("#") or line.startswith("http://") or line.startswith("https://"):
-            lines.append(line)
-            continue
-        lines.append(f"{GORO_PLAYBACK_BASE_URL.rstrip('/')}/{line.lstrip('/')}")
-    return "\n".join(lines) + "\n"
-
-
 @app.get("/healthz")
 def health_check() -> dict[str, str]:
     return {"status": "ok"}
@@ -253,33 +243,6 @@ def top_page(request: Request, video_id: str | None = None):
         request,
         "top.html",
         base_context(request, videos=videos, selected_video=selected, error_message=error_message),
-    )
-
-
-@app.get("/stream/{video_id}/playlist.m3u8")
-def stream_playlist(request: Request, video_id: str):
-    user = get_current_user_optional(request)
-    video = get_video_by_id(video_id)
-    if not video:
-        return PlainTextResponse("Not found", status_code=404)
-
-    visibility = video.get("visibility")
-    if visibility == "private" and not user:
-        return PlainTextResponse("Login required", status_code=403)
-
-    params: dict[str, str] = {}
-    if visibility == "private":
-        token_resp = goro_post(f"/videos/{quote(video_id)}/tokens")
-        params["token"] = token_resp["token"]
-
-    with httpx.Client(timeout=30.0) as client:
-        response = client.get(f"{GORO_API_BASE_URL}/videos/{quote(video_id)}/playlist", params=params)
-    if response.status_code >= 400:
-        return PlainTextResponse("Playback failed", status_code=response.status_code)
-
-    return PlainTextResponse(
-        rewrite_playlist(response.text),
-        media_type="application/vnd.apple.mpegurl",
     )
 
 
