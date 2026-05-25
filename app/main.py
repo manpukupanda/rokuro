@@ -249,6 +249,7 @@ def top_page(request: Request, video_id: str | None = None):
         selected = next((v for v in videos if v.get("public_id") == video_id), None)
 
     return templates.TemplateResponse(
+        request,
         "top.html",
         base_context(request, videos=videos, selected_video=selected, error_message=error_message),
     )
@@ -285,7 +286,7 @@ def stream_playlist(request: Request, video_id: str):
 def login_form(request: Request):
     if get_current_user_optional(request):
         return RedirectResponse("/", status_code=303)
-    return templates.TemplateResponse("login.html", base_context(request))
+    return templates.TemplateResponse(request, "login.html", base_context(request))
 
 
 @app.post("/login")
@@ -313,7 +314,7 @@ def profile_page(request: Request):
         user = require_login(request)
     except PermissionError:
         return RedirectResponse("/login", status_code=303)
-    return templates.TemplateResponse("profile.html", base_context(request, user=user))
+    return templates.TemplateResponse(request, "profile.html", base_context(request, user=user))
 
 
 @app.post("/profile/display-name")
@@ -385,7 +386,7 @@ def admin_users_page(request: Request):
         users = conn.execute(
             "SELECT account, display_name, role, is_active, is_protected, created_at FROM users ORDER BY created_at DESC"
         ).fetchall()
-    return templates.TemplateResponse("admin_users.html", base_context(request, users=users))
+    return templates.TemplateResponse(request, "admin_users.html", base_context(request, users=users))
 
 
 @app.post("/admin/users/create")
@@ -541,7 +542,7 @@ def admin_videos_page(request: Request):
     except GoroAPIError:
         error_message = "Failed to load videos from goro API."
     return templates.TemplateResponse(
-        "admin_videos.html", base_context(request, videos=videos, error_message=error_message)
+        request, "admin_videos.html", base_context(request, videos=videos, error_message=error_message)
     )
 
 
