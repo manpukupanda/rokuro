@@ -3,6 +3,8 @@ proxy_cache_path /var/cache/nginx/hls levels=1:2 keys_zone=hls_segment_cache:32m
 server {
     listen 80;
     server_name ${ROKURO_SERVER_NAME};
+    # Increase the maximum allowed body size for file uploads (e.g., for video uploads)
+    client_max_body_size 500M;
 
     location / {
         proxy_pass http://rokuro:6960;
