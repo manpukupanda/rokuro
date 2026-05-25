@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Admin Users - Rokuro{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">User Management</h1>
+
+<div class="card mb-4">
+  <div class="card-body">
+    <h2 class="h5">Create User</h2>
+    <form method="post" action="/admin/users/create" class="row g-2">
+      <div class="col-md-3"><input class="form-control" name="account" placeholder="Account" required></div>
+      <div class="col-md-3"><input class="form-control" name="display_name" placeholder="Display Name" required></div>
+      <div class="col-md-2">
+        <select class="form-select" name="role" required>
+          <option value="user">user</option>
+          <option value="admin">admin</option>
+        </select>
+      </div>
+      <div class="col-md-3"><input class="form-control" type="password" name="password" placeholder="Initial Password" minlength="8" required></div>
+      <div class="col-md-1"><button class="btn btn-primary w-100" type="submit">Create</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="table-responsive">
+<table class="table table-striped align-middle">
+  <thead>
+    <tr>
+      <th>Account</th>
+      <th>Display Name</th>
+      <th>Role</th>
+      <th>Status</th>
+      <th>Protected</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for user in users %}
+    <tr>
+      <td>{{ user['account'] }}</td>
+      <td>{{ user['display_name'] }}</td>
+      <td>{{ user['role'] }}</td>
+      <td>{% if user['is_active'] %}active{% else %}disabled{% endif %}</td>
+      <td>{% if user['is_protected'] %}yes{% else %}no{% endif %}</td>
+      <td>
+        <div class="d-flex flex-wrap gap-1">
+          <form method="post" action="/admin/users/{{ user['account'] }}/active" class="d-inline">
+            <input type="hidden" name="active" value="{% if user['is_active'] %}0{% else %}1{% endif %}">
+            <button class="btn btn-sm btn-outline-secondary" type="submit">{% if user['is_active'] %}Disable{% else %}Enable{% endif %}</button>
+          </form>
+
+          <form method="post" action="/admin/users/{{ user['account'] }}/delete" class="d-inline" onsubmit="return confirm('Delete this user?')">
+            <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+          </form>
+
+          <form method="post" action="/admin/users/{{ user['account'] }}/password" class="d-flex gap-1">
+            <input class="form-control form-control-sm" type="password" name="new_password" placeholder="New Password" minlength="8" required>
+            <button class="btn btn-sm btn-outline-primary" type="submit">Reset PW</button>
+          </form>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

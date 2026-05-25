@@ -6,6 +6,10 @@ services:
     container_name: rokuro
     environment:
       - GORO_API_KEY=${GORO_API_KEY:?GORO_API_KEY must be set}
+      - ROKURO_SESSION_SECRET=${ROKURO_SESSION_SECRET:?ROKURO_SESSION_SECRET must be set}
+      - ROKURO_INITIAL_ADMIN_PASSWORD=${ROKURO_INITIAL_ADMIN_PASSWORD:?ROKURO_INITIAL_ADMIN_PASSWORD must be set}
+      - GORO_API_BASE_URL=${GORO_API_BASE_URL:-http://goro:5600}
+      - GORO_PLAYBACK_BASE_URL=${GORO_PLAYBACK_BASE_URL:-http://localhost:5600}
       - ROKURO_DB_PATH=/var/lib/rokuro/rokuro.db
     volumes:
       - rokuro_data:/var/lib/rokuro

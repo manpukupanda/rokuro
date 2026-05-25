@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Admin Videos - Rokuro{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Video Management</h1>
+
+{% if error_message %}
+  <div class="alert alert-danger">{{ error_message }}</div>
+{% endif %}
+
+<div class="card mb-4">
+  <div class="card-body">
+    <h2 class="h5">Upload Video</h2>
+    <form method="post" action="/admin/videos/upload" enctype="multipart/form-data" class="row g-2">
+      <div class="col-md-10"><input class="form-control" type="file" name="file" accept="video/mp4,.mp4" required></div>
+      <div class="col-md-2"><button class="btn btn-primary w-100" type="submit">Upload</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="table-responsive">
+<table class="table table-striped align-middle">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Title</th>
+      <th>Status</th>
+      <th>Visibility</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for video in videos %}
+    <tr>
+      <td class="small">{{ video['public_id'] }}</td>
+      <td>{{ video['title'] or video['original_name'] }}</td>
+      <td>{{ video['status'] }}</td>
+      <td>{{ video['visibility'] }}</td>
+      <td>
+        <div class="d-flex gap-1">
+          <form method="post" action="/admin/videos/{{ video['public_id'] }}/visibility" class="d-flex gap-1">
+            <select class="form-select form-select-sm" name="visibility">
+              <option value="public" {% if video['visibility'] == 'public' %}selected{% endif %}>public</option>
+              <option value="private" {% if video['visibility'] == 'private' %}selected{% endif %}>private</option>
+            </select>
+            <button class="btn btn-sm btn-outline-primary" type="submit">Apply</button>
+          </form>
+          <form method="post" action="/admin/videos/{{ video['public_id'] }}/delete" onsubmit="return confirm('Delete this video?')">
+            <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+          </form>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

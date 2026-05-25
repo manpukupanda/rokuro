@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}My Profile - Rokuro{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">My Profile</h1>
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-body">
+        <h2 class="h5">Display Name</h2>
+        <form method="post" action="/profile/display-name">
+          <div class="mb-3">
+            <label class="form-label" for="display_name">Display Name</label>
+            <input class="form-control" id="display_name" name="display_name" value="{{ user['display_name'] }}" required>
+          </div>
+          <button class="btn btn-primary" type="submit">Update Display Name</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-body">
+        <h2 class="h5">Change Password</h2>
+        <form method="post" action="/profile/password">
+          <div class="mb-3">
+            <label class="form-label" for="current_password">Current Password</label>
+            <input class="form-control" id="current_password" name="current_password" type="password" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="new_password">New Password</label>
+            <input class="form-control" id="new_password" name="new_password" type="password" minlength="8" required>
+          </div>
+          <button class="btn btn-primary" type="submit">Change Password</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
