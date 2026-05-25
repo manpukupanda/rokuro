@@ -1,0 +1,60 @@
+services:
+  rokuro:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: rokuro
+    environment:
+      - GORO_API_KEY=${GORO_API_KEY:?GORO_API_KEY must be set}
+      - ROKURO_DB_PATH=/var/lib/rokuro/rokuro.db
+    volumes:
+      - rokuro_data:/var/lib/rokuro
+    ports:
+      - "6960:6960"
+
+  goro:
+    image: ghcr.io/manpukupanda/goro:latest
+    command: ["/app/goro", "--console"]
+    volumes:
+      - goro_data:/var/lib/goro
+    ports:
+      - "5600:5600"
+      - "5601:5601"
+    environment:
+      - GORO_S3_ACCESS_KEY=${GORO_S3_ACCESS_KEY:?GORO_S3_ACCESS_KEY must be set}
+      - GORO_S3_SECRET_KEY=${GORO_S3_SECRET_KEY:?GORO_S3_SECRET_KEY must be set}
+      - GORO_SECURE_LINK_SECRET=${GORO_SECURE_LINK_SECRET:?GORO_SECURE_LINK_SECRET must be set}
+      - GORO_API_KEY=${GORO_API_KEY:?GORO_API_KEY must be set}
+      - GORO_ADMIN_USER=${GORO_ADMIN_USER:-admin}
+      - GORO_ADMIN_PASSWORD=${GORO_ADMIN_PASSWORD:?GORO_ADMIN_PASSWORD must be set}
+      - GORO_DB_PATH=/var/lib/goro/goro.db
+
+  nginx:
+    image: nginx
+    volumes:
+      - ./nginx/nginx.conf.template:/etc/nginx/templates/default.conf.template
+      - nginx_cache:/var/cache/nginx
+    ports:
+      - "80:80"
+    environment:
+      - SECURE_LINK_SECRET=${GORO_SECURE_LINK_SECRET:?GORO_SECURE_LINK_SECRET must be set}
+      - GORO_SERVER_NAME=${GORO_SERVER_NAME:?GORO_SERVER_NAME must be set}
+      - ROKURO_SERVER_NAME=${ROKURO_SERVER_NAME:?ROKURO_SERVER_NAME must be set}
+
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=${GORO_S3_ACCESS_KEY:?GORO_S3_ACCESS_KEY must be set}
+      - MINIO_ROOT_PASSWORD=${GORO_S3_SECRET_KEY:?GORO_S3_SECRET_KEY must be set}
+    volumes:
+      - minio_data:/data
+
+volumes:
+  goro_data:
+  rokuro_data:
+  minio_data:
+  nginx_cache:

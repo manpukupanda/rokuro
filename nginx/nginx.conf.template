@@ -1,0 +1,46 @@
+proxy_cache_path /var/cache/nginx/hls levels=1:2 keys_zone=hls_segment_cache:32m max_size=10g inactive=1h use_temp_path=off;
+
+server {
+    listen 80;
+    server_name ${ROKURO_SERVER_NAME};
+
+    location / {
+        proxy_pass http://rokuro:6960;
+    }
+}
+
+server {
+    listen 80;
+    server_name ${GORO_SERVER_NAME};
+
+    location ~ ^/hls/.+\.ts$ {
+        secure_link $arg_md5,$arg_expires;
+        secure_link_md5 "$secure_link_expires${uri}${SECURE_LINK_SECRET}";
+
+        if ($secure_link = "") { return 403; }
+        if ($secure_link = "0") { return 410; }
+
+        proxy_cache hls_segment_cache;
+        proxy_cache_methods GET HEAD;
+        proxy_cache_key $uri;
+        proxy_cache_valid 200 1h;
+        proxy_cache_lock on;
+        add_header X-Cache-Status $upstream_cache_status always;
+
+        proxy_pass http://goro:5600;
+    }
+
+    location ~ ^/hls/ {
+        secure_link $arg_md5,$arg_expires;
+        secure_link_md5 "$secure_link_expires${uri}${SECURE_LINK_SECRET}";
+
+        if ($secure_link = "") { return 403; }
+        if ($secure_link = "0") { return 410; }
+
+        proxy_pass http://goro:5600;
+    }
+
+    location / {
+        proxy_pass http://goro:5600;
+    }
+}
