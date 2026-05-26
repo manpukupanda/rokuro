@@ -1,5 +1,6 @@
 import os
 import sqlite3
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
@@ -210,6 +211,22 @@ def goro_list_videos() -> list[dict[str, Any]]:
     return sorted(videos, key=lambda x: x.get("created_at", ""), reverse=True)
 
 
+def goro_get_video_detail(video_id: str) -> dict[str, Any] | None:
+    try:
+        return goro_get(f"/videos/{quote(video_id)}")
+    except GoroAPIError:
+        return None
+
+
+def goro_issue_token(video_id: str) -> str | None:
+    try:
+        token_resp = goro_post(f"/videos/{quote(video_id)}/tokens")
+    except GoroAPIError:
+        return None
+    token = token_resp.get("token", "")
+    return token if token else None
+
+
 def get_video_by_id(video_id: str) -> dict[str, Any] | None:
     for video in goro_list_videos():
         if video.get("public_id") == video_id:
@@ -235,6 +252,53 @@ def top_page(request: Request, video_id: str | None = None):
     if not user:
         videos = [v for v in videos if v.get("visibility") == "public"]
 
+    thumbnail_names: dict[str, str] = {}
+    if videos:
+        with ThreadPoolExecutor(max_workers=min(8, len(videos))) as executor:
+            detail_futures = {
+                executor.submit(goro_get_video_detail, video["public_id"]): video["public_id"]
+                for video in videos
+                if video.get("public_id")
+            }
+            for future in as_completed(detail_futures):
+                video_id_for_detail = detail_futures[future]
+                detail = future.result()
+                names = detail.get("thumbnail_names", []) if detail else []
+                if names:
+                    thumbnail_names[video_id_for_detail] = names[0]
+
+    private_tokens: dict[str, str] = {}
+    private_ids = [
+        video["public_id"]
+        for video in videos
+        if user and video.get("visibility") == "private" and thumbnail_names.get(video.get("public_id", ""))
+    ]
+    if private_ids:
+        with ThreadPoolExecutor(max_workers=min(8, len(private_ids))) as executor:
+            token_futures = {executor.submit(goro_issue_token, v_id): v_id for v_id in private_ids}
+            for future in as_completed(token_futures):
+                private_video_id = token_futures[future]
+                token = future.result()
+                if token:
+                    private_tokens[private_video_id] = token
+
+    for video in videos:
+        video_id_for_thumbnail = video.get("public_id", "")
+        thumbnail_name = thumbnail_names.get(video_id_for_thumbnail)
+        thumbnail_url = None
+        if thumbnail_name and video_id_for_thumbnail:
+            base_thumbnail_url = (
+                f"{GORO_PLAYBACK_BASE_URL.rstrip('/')}/videos/"
+                f"{quote(video_id_for_thumbnail)}/thumbnails/{quote(thumbnail_name)}"
+            )
+            if video.get("visibility") == "private":
+                token = private_tokens.get(video_id_for_thumbnail)
+                if token:
+                    thumbnail_url = f"{base_thumbnail_url}?token={quote(token, safe='')}"
+            else:
+                thumbnail_url = base_thumbnail_url
+        video["thumbnail_url"] = thumbnail_url
+
     selected = None
     if video_id:
         selected = next((v for v in videos if v.get("public_id") == video_id), None)
@@ -257,12 +321,11 @@ def stream_token(request: Request, video_id: str):
     if visibility == "private" and not user:
         return JSONResponse({"error": "login_required"}, status_code=403)
 
-    try:
-        token_resp = goro_post(f"/videos/{quote(video_id)}/tokens")
-    except GoroAPIError:
+    token = goro_issue_token(video_id)
+    if not token:
         return JSONResponse({"error": "token_issue_failed"}, status_code=502)
 
-    return {"token": token_resp.get("token", "")}
+    return {"token": token}
 
 
 @app.get("/login")
