@@ -191,6 +191,78 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /videos/{id}:
+    get:
+      tags: [Videos]
+      summary: Get video detail
+      operationId: getVideo
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/VideoId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoDetail'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags: [Videos]
+      summary: Delete video
+      operationId: deleteVideo
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/VideoId'
+      responses:
+        '204':
+          description: No Content
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /videos/{id}/thumbnails/{name}:
+    get:
+      tags: [Playback]
+      summary: Get video thumbnail
+      description: |
+        Returns a thumbnail image.
+        For private videos, pass `token` issued by `POST /videos/{id}/tokens`.
+      operationId: getThumbnail
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/VideoId'
+        - $ref: '#/components/parameters/ThumbnailName'
+        - in: query
+          name: token
+          schema: { type: string }
+          description: Required for private videos.
+      responses:
+        '200':
+          description: OK
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
   /videos/{id}/visibility:
     put:
       tags: [Videos]
@@ -308,25 +380,6 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /videos/{id}:
-    delete:
-      tags: [Videos]
-      summary: Delete video
-      operationId: deleteVideo
-      security:
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/VideoId'
-      responses:
-        '204':
-          description: No Content
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
   /videos/{id}/download:
     get:
       tags: [Videos]
@@ -423,6 +476,12 @@ components:
       required: true
       schema: { type: string }
       description: Public video ID.
+    ThumbnailName:
+      name: name
+      in: path
+      required: true
+      schema: { type: string }
+      description: Thumbnail spec name.
 
   responses:
     BadRequestError:
@@ -574,6 +633,37 @@ components:
         has_video:
           type: boolean
           nullable: true
+
+    GeneratedProfile:
+      type: object
+      required: [name, format, width, height]
+      properties:
+        name:
+          type: string
+        format:
+          type: string
+          enum: [hls_ts, hls_fmp4, dash_fmp4]
+        width:
+          type: integer
+        height:
+          type: integer
+
+    VideoDetail:
+      allOf:
+        - $ref: '#/components/schemas/Video'
+        - type: object
+          required: [profiles, thumbnail_names]
+          properties:
+            profiles:
+              type: array
+              description: Profiles that are actually generated for this video.
+              items:
+                $ref: '#/components/schemas/GeneratedProfile'
+            thumbnail_names:
+              type: array
+              description: Thumbnail names that are actually generated for this video.
+              items:
+                type: string
 
     SetVisibilityRequest:
       type: object
