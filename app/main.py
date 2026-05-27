@@ -250,7 +250,9 @@ def top_page(request: Request, video_id: str | None = None):
         error_message = "Failed to load videos from goro API."
 
     if not user:
-        videos = [v for v in videos if v.get("visibility") == "public"]
+        videos = [v for v in videos if v.get("visibility") == "public" and v.get("status") == "ready"]
+    elif user["role"] != "admin":
+        videos = [v for v in videos if v.get("status") == "ready"]
 
     thumbnail_names: dict[str, str] = {}
     if videos:
