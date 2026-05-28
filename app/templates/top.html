@@ -12,9 +12,21 @@
       <h2 class="h5">Now Playing: {{ selected_video['title'] or selected_video['original_name'] }}</h2>
       {% if selected_video['status'] != 'ready' %}
         <div class="alert alert-warning mb-0">This video is not ready yet. Current status: {{ selected_video['status'] }}</div>
-      {% elif not playback_src %}
+      {% elif not playback_token %}
         <div class="alert alert-danger mb-0">Playback is unavailable.</div>
       {% else %}
+        {% if selected_profiles|length > 1 %}
+        <div class="mb-2">
+          <label for="profile-select" class="form-label mb-1">Profile</label>
+          <select id="profile-select" class="form-select form-select-sm w-auto">
+            {% for p in selected_profiles %}
+            <option value="{{ p['name'] }}" data-format="{{ p['format'] }}">
+              {{ p['name'] }} ({{ p['format'] }}, {{ p['width'] }}x{{ p['height'] }})
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
         <video id="player" controls class="w-100 rounded" playsinline></video>
       {% endif %}
     </div>
@@ -48,21 +60,69 @@
 {% endblock %}
 
 {% block scripts %}
-{% if selected_video and selected_video['status'] == 'ready' and playback_src %}
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+{% if selected_video and selected_video['status'] == 'ready' and playback_token %}
+<script src="https://cdn.jsdelivr.net/npm/shaka-player/dist/shaka-player.compiled.js"></script>
 <script>
   (async function () {
-    const video = document.getElementById('player');
-    const src = {{ playback_src|tojson }};
+    const videoEl = document.getElementById('player');
+    const profileSelect = document.getElementById('profile-select');
+    const baseUrl = {{ goro_playback_base_url|tojson }};
+    const videoId = {{ selected_video['public_id']|tojson }};
+    const token = {{ playback_token|tojson }};
+    const profiles = {{ selected_profiles|tojson }};
 
-    if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = src;
+    shaka.polyfill.installAll();
+    if (!shaka.Player.isBrowserSupported()) {
+      console.error('Shaka Player is not supported in this browser.');
       return;
     }
-    if (window.Hls && window.Hls.isSupported()) {
-      const hls = new Hls();
-      hls.loadSource(src);
-      hls.attachMedia(video);
+
+    const player = new shaka.Player();
+    await player.attach(videoEl);
+
+    player.addEventListener('error', function (event) {
+      console.error('Shaka Player error', event.detail);
+    });
+
+    function buildUrl(profileName, format) {
+      const endpoint = format === 'dash_fmp4' ? 'manifest' : 'playlist';
+      return baseUrl + '/videos/' + encodeURIComponent(videoId) + '/' + endpoint
+        + '?profile=' + encodeURIComponent(profileName)
+        + '&token=' + encodeURIComponent(token);
+    }
+
+    async function loadProfile(profileName, format, startTime) {
+      const url = buildUrl(profileName, format);
+      try {
+        await player.load(url, startTime != null ? startTime : undefined);
+      } catch (e) {
+        console.error('Failed to load profile', profileName, e);
+      }
+    }
+
+    function getSelectedProfileInfo() {
+      if (profiles.length === 0) return null;
+      if (profileSelect) {
+        const opt = profileSelect.options[profileSelect.selectedIndex];
+        return { name: opt.value, format: opt.dataset.format };
+      }
+      return { name: profiles[0].name, format: profiles[0].format };
+    }
+
+    if (profileSelect) {
+      profileSelect.addEventListener('change', async function () {
+        const currentTime = videoEl.currentTime || 0;
+        const info = getSelectedProfileInfo();
+        if (info) {
+          await loadProfile(info.name, info.format, currentTime);
+          videoEl.play().catch(() => {});
+        }
+      });
+    }
+
+    const initial = getSelectedProfileInfo();
+    if (initial) {
+      await loadProfile(initial.name, initial.format, null);
     }
   })();
 </script>

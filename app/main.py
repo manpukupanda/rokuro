@@ -248,6 +248,7 @@ def top_page(request: Request, video_id: str | None = None):
         videos = [v for v in videos if v.get("status") == "ready"]
 
     thumbnail_names: dict[str, str] = {}
+    video_details: dict[str, dict[str, Any]] = {}
     if videos:
         with ThreadPoolExecutor(max_workers=min(8, len(videos))) as executor:
             detail_futures = {
@@ -258,6 +259,8 @@ def top_page(request: Request, video_id: str | None = None):
             for future in as_completed(detail_futures):
                 video_id_for_detail = detail_futures[future]
                 detail = future.result()
+                if detail:
+                    video_details[video_id_for_detail] = detail
                 names = detail.get("thumbnail_names", []) if detail else []
                 if names:
                     thumbnail_names[video_id_for_detail] = names[0]
@@ -295,17 +298,17 @@ def top_page(request: Request, video_id: str | None = None):
         video["thumbnail_url"] = thumbnail_url
 
     selected = None
-    playback_src = None
+    playback_token = None
+    selected_profiles: list[dict[str, Any]] = []
     if video_id:
         selected = next((v for v in videos if v.get("public_id") == video_id), None)
         if selected and selected.get("status") == "ready":
             token = goro_issue_token(video_id)
             if token:
-                playlist_url = (
-                    f"{GORO_PLAYBACK_BASE_URL.rstrip('/')}/videos/{quote(video_id)}/playlist"
-                    f"?token={quote(token, safe='')}"
-                )
-                playback_src = playlist_url
+                playback_token = token
+                detail = video_details.get(video_id) or goro_get_video_detail(video_id)
+                if detail:
+                    selected_profiles = detail.get("profiles", [])
             else:
                 error_message = "Failed to issue playback token."
 
@@ -316,7 +319,8 @@ def top_page(request: Request, video_id: str | None = None):
             request,
             videos=videos,
             selected_video=selected,
-            playback_src=playback_src,
+            playback_token=playback_token,
+            selected_profiles=selected_profiles,
             error_message=error_message,
         ),
     )
