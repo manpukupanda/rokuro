@@ -227,13 +227,6 @@ def goro_issue_token(video_id: str) -> str | None:
     return token if token else None
 
 
-def get_video_by_id(video_id: str) -> dict[str, Any] | None:
-    for video in goro_list_videos():
-        if video.get("public_id") == video_id:
-            return video
-    return None
-
-
 @app.get("/healthz")
 def health_check() -> dict[str, str]:
     return {"status": "ok"}
@@ -302,32 +295,31 @@ def top_page(request: Request, video_id: str | None = None):
         video["thumbnail_url"] = thumbnail_url
 
     selected = None
+    playback_src = None
     if video_id:
         selected = next((v for v in videos if v.get("public_id") == video_id), None)
+        if selected and selected.get("status") == "ready":
+            token = goro_issue_token(video_id)
+            if token:
+                playlist_url = (
+                    f"{GORO_PLAYBACK_BASE_URL.rstrip('/')}/videos/{quote(video_id)}/playlist"
+                    f"?token={quote(token, safe='')}"
+                )
+                playback_src = playlist_url
+            else:
+                error_message = "Failed to issue playback token."
 
     return templates.TemplateResponse(
         request,
         "top.html",
-        base_context(request, videos=videos, selected_video=selected, error_message=error_message),
+        base_context(
+            request,
+            videos=videos,
+            selected_video=selected,
+            playback_src=playback_src,
+            error_message=error_message,
+        ),
     )
-
-
-@app.get("/stream/{video_id}/token")
-def stream_token(request: Request, video_id: str):
-    user = get_current_user_optional(request)
-    video = get_video_by_id(video_id)
-    if not video:
-        return JSONResponse({"error": "not_found"}, status_code=404)
-
-    visibility = video.get("visibility")
-    if visibility == "private" and not user:
-        return JSONResponse({"error": "login_required"}, status_code=403)
-
-    token = goro_issue_token(video_id)
-    if not token:
-        return JSONResponse({"error": "token_issue_failed"}, status_code=502)
-
-    return {"token": token}
 
 
 @app.get("/login")
