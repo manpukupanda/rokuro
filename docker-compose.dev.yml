@@ -21,6 +21,7 @@ services:
     command: ["/app/goro", "--console"]
     volumes:
       - goro_data:/var/lib/goro
+      - ./goro/config.yaml:/var/lib/goro/config.yaml
     ports:
       - "5600:5600"
       - "5601:5601"
@@ -32,6 +33,7 @@ services:
       - GORO_ADMIN_USER=${GORO_ADMIN_USER:-admin}
       - GORO_ADMIN_PASSWORD=${GORO_ADMIN_PASSWORD:?GORO_ADMIN_PASSWORD must be set}
       - GORO_DB_PATH=/var/lib/goro/goro.db
+      - GORO_CONFIG=/var/lib/goro/config.yaml
 
   nginx:
     image: nginx
