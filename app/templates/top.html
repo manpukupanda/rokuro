@@ -48,7 +48,7 @@
 {% endblock %}
 
 {% block scripts %}
-{% if selected_video and selected_video['status'] == 'ready' %}
+{% if selected_video and selected_video['status'] == 'ready' and playback_src %}
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 <script>
   (async function () {
