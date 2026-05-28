@@ -22,6 +22,10 @@ server {
         if ($secure_link = "") { return 403; }
         if ($secure_link = "0") { return 410; }
 
+        add_header Access-Control-Allow-Origin * always;
+        add_header Access-Control-Allow-Methods "GET, HEAD, OPTIONS" always;
+        add_header Access-Control-Allow-Headers "*" always;
+
         proxy_cache hls_segment_cache;
         proxy_cache_methods GET HEAD;
         proxy_cache_key $uri;
@@ -39,10 +43,18 @@ server {
         if ($secure_link = "") { return 403; }
         if ($secure_link = "0") { return 410; }
 
+        add_header Access-Control-Allow-Origin * always;
+        add_header Access-Control-Allow-Methods "GET, HEAD, OPTIONS" always;
+        add_header Access-Control-Allow-Headers "*" always;
+
         proxy_pass http://goro:5600;
     }
 
     location / {
+        add_header Access-Control-Allow-Origin * always;
+        add_header Access-Control-Allow-Methods "GET, HEAD, OPTIONS" always;
+        add_header Access-Control-Allow-Headers "*" always;
+
         proxy_pass http://goro:5600;
     }
 }

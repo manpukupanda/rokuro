@@ -1,0 +1,52 @@
+s3:
+  endpoint: minio:9000
+  # access_key and secret_key must be supplied via GORO_S3_ACCESS_KEY and
+  # GORO_S3_SECRET_KEY environment variables (leave blank here to avoid
+  # storing secrets in the config file).
+  access_key: ""
+  secret_key: ""
+  bucket: goro
+  use_ssl: false
+  region: us-east-1
+
+worker:
+  # Keep concurrency low; ffmpeg is CPU-intensive and excessive parallelism
+  # will saturate the host and degrade encoding performance.
+  concurrency: 2
+
+secure_link:
+  # Secret used to sign HLS segment URLs.  Must be set via the
+  # GORO_SECURE_LINK_SECRET environment variable (or here for non-production use).
+  # Keep this value identical to the one set on the nginx container.
+  secret: ""
+  ttl_sec: 3600
+
+playlist_token:
+  # How long (in seconds) a playlist access token remains valid.
+  ttl_sec: 900
+
+thumbnails:
+  specs:
+    - name: fixed_5s
+      type: fixed_second
+      # duration_sec: 0 means auto (>= 5s video → 5s, shorter → duration/2)
+      duration_sec: 0
+    - name: representative
+      type: representative
+
+hls:
+  profiles:
+    - name: 1080p
+      format: hls_fmp4
+      width: 1920
+      height: 1080
+      video_bitrate: 5000k
+      audio_bitrate: 192k
+      segment_seconds: 4
+    - name: 720p
+      format: dash_fmp4
+      width: 1280
+      height: 720
+      video_bitrate: 2800k
+      audio_bitrate: 128k
+      segment_seconds: 4
