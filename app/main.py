@@ -1,4 +1,5 @@
 import os
+import re
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import closing
@@ -56,6 +57,7 @@ def now_iso() -> str:
 def db_connect() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
 
@@ -105,6 +107,68 @@ def init_db() -> None:
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS categories (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                display_order INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS series (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                display_order INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS tags (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS video_categories (
+                video_id TEXT NOT NULL,
+                category_id INTEGER NOT NULL,
+                PRIMARY KEY (video_id, category_id),
+                FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS video_tags (
+                video_id TEXT NOT NULL,
+                tag_id INTEGER NOT NULL,
+                PRIMARY KEY (video_id, tag_id),
+                FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS video_series (
+                video_id TEXT NOT NULL PRIMARY KEY,
+                series_id INTEGER NOT NULL,
+                series_order INTEGER,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (series_id) REFERENCES series(id) ON DELETE CASCADE
+            )
+            """
+        )
         conn.commit()
 
 
@@ -132,6 +196,124 @@ def seed_initial_admin() -> None:
 def startup() -> None:
     init_db()
     seed_initial_admin()
+
+
+# ---------------------------------------------------------------------------
+# Tag helpers
+# ---------------------------------------------------------------------------
+
+def parse_tags(tags_str: str) -> list[str]:
+    """Parse a string like '#Tag1 #tag2 tag3' into normalised tag names."""
+    tokens = re.split(r"[\s\u3000]+", tags_str.strip())
+    seen: set[str] = set()
+    result: list[str] = []
+    for t in tokens:
+        name = t.lstrip("#").lower()
+        if name and name not in seen:
+            seen.add(name)
+            result.append(name)
+    return result
+
+
+def set_video_tags(conn: sqlite3.Connection, video_id: str, tags_str: str) -> None:
+    """Replace all tags for *video_id* with the parsed contents of *tags_str*.
+
+    Orphaned tags (no remaining associations) are pruned automatically.
+    """
+    names = parse_tags(tags_str)
+    conn.execute("DELETE FROM video_tags WHERE video_id = ?", (video_id,))
+    ts = now_iso()
+    for name in names:
+        conn.execute("INSERT OR IGNORE INTO tags (name, created_at) VALUES (?, ?)", (name, ts))
+        tag_row = conn.execute("SELECT id FROM tags WHERE name = ?", (name,)).fetchone()
+        conn.execute(
+            "INSERT OR IGNORE INTO video_tags (video_id, tag_id) VALUES (?, ?)",
+            (video_id, tag_row["id"]),
+        )
+    conn.execute(
+        "DELETE FROM tags WHERE id NOT IN (SELECT DISTINCT tag_id FROM video_tags)"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Classification helpers (used by top_page)
+# ---------------------------------------------------------------------------
+
+def load_classification_for_videos(
+    videos: list[dict[str, Any]],
+) -> tuple[list[dict], list[dict], list[dict]]:
+    """Return categories/series/tags filtered to *videos* that are visible.
+
+    Each item in the returned lists is a dict with keys ``name`` and ``videos``
+    (a list of video dicts drawn from *videos*).  Groups that contain no
+    visible videos are omitted.
+    """
+    if not videos:
+        return [], [], []
+
+    video_lookup = {v["public_id"]: v for v in videos}
+    visible_ids = set(video_lookup.keys())
+
+    with closing(db_connect()) as conn:
+        # ---- categories ----
+        cat_rows = conn.execute(
+            """
+            SELECT vc.category_id, vc.video_id, c.name
+              FROM video_categories vc
+              JOIN categories c ON c.id = vc.category_id
+             ORDER BY c.display_order, c.name
+            """
+        ).fetchall()
+        cat_map: dict[int, dict] = {}
+        for row in cat_rows:
+            if row["video_id"] not in visible_ids:
+                continue
+            cid = row["category_id"]
+            if cid not in cat_map:
+                cat_map[cid] = {"name": row["name"], "videos": []}
+            cat_map[cid]["videos"].append(video_lookup[row["video_id"]])
+        categories_with_videos = [v for v in cat_map.values() if v["videos"]]
+
+        # ---- series ----
+        series_rows = conn.execute(
+            """
+            SELECT vs.series_id, vs.video_id, s.name
+              FROM video_series vs
+              JOIN series s ON s.id = vs.series_id
+             ORDER BY s.display_order, s.name,
+                      COALESCE(vs.series_order, 2147483647), vs.created_at
+            """
+        ).fetchall()
+        series_map: dict[int, dict] = {}
+        for row in series_rows:
+            if row["video_id"] not in visible_ids:
+                continue
+            sid = row["series_id"]
+            if sid not in series_map:
+                series_map[sid] = {"name": row["name"], "videos": []}
+            series_map[sid]["videos"].append(video_lookup[row["video_id"]])
+        series_with_videos = [v for v in series_map.values() if v["videos"]]
+
+        # ---- tags ----
+        tag_rows = conn.execute(
+            """
+            SELECT vt.tag_id, vt.video_id, t.name
+              FROM video_tags vt
+              JOIN tags t ON t.id = vt.tag_id
+             ORDER BY t.name
+            """
+        ).fetchall()
+        tag_map: dict[int, dict] = {}
+        for row in tag_rows:
+            if row["video_id"] not in visible_ids:
+                continue
+            tid = row["tag_id"]
+            if tid not in tag_map:
+                tag_map[tid] = {"name": row["name"], "videos": []}
+            tag_map[tid]["videos"].append(video_lookup[row["video_id"]])
+        tags_with_videos = [v for v in tag_map.values() if v["videos"]]
+
+    return categories_with_videos, series_with_videos, tags_with_videos
 
 
 def fetch_user(account: str) -> sqlite3.Row | None:
@@ -312,6 +494,8 @@ def top_page(request: Request, video_id: str | None = None):
             else:
                 error_message = "Failed to issue playback token."
 
+    categories_with_videos, series_with_videos, tags_with_videos = load_classification_for_videos(videos)
+
     return templates.TemplateResponse(
         request,
         "top.html",
@@ -322,6 +506,9 @@ def top_page(request: Request, video_id: str | None = None):
             playback_token=playback_token,
             selected_profiles=selected_profiles,
             error_message=error_message,
+            categories_with_videos=categories_with_videos,
+            series_with_videos=series_with_videos,
+            tags_with_videos=tags_with_videos,
         ),
     )
 
@@ -585,6 +772,23 @@ def admin_videos_page(request: Request):
         videos = goro_list_videos()
     except GoroAPIError:
         error_message = "Failed to load videos from goro API."
+
+    with closing(db_connect()) as conn:
+        tag_rows = conn.execute(
+            """
+            SELECT vt.video_id, t.name
+              FROM video_tags vt
+              JOIN tags t ON t.id = vt.tag_id
+             ORDER BY t.name
+            """
+        ).fetchall()
+    video_tags: dict[str, list[str]] = {}
+    for row in tag_rows:
+        video_tags.setdefault(row["video_id"], []).append(row["name"])
+    for video in videos:
+        names = video_tags.get(video["public_id"], [])
+        video["tags_str"] = " ".join(f"#{n}" for n in names)
+
     return templates.TemplateResponse(
         request, "admin_videos.html", base_context(request, videos=videos, error_message=error_message)
     )
@@ -651,3 +855,450 @@ def admin_video_delete(request: Request, video_id: str):
 
     set_flash(request, "success", "Video deleted.")
     return RedirectResponse("/admin/videos", status_code=303)
+
+
+# ---------------------------------------------------------------------------
+# Admin: video tags
+# ---------------------------------------------------------------------------
+
+@app.post("/admin/videos/{video_id}/tags")
+def admin_video_update_tags(request: Request, video_id: str, tags: str = Form("")):
+    try:
+        require_admin(request)
+    except PermissionError:
+        return RedirectResponse("/login", status_code=303)
+
+    with closing(db_connect()) as conn:
+        set_video_tags(conn, video_id, tags)
+        conn.commit()
+
+    set_flash(request, "success", "Tags updated.")
+    return RedirectResponse("/admin/videos", status_code=303)
+
+
+# ---------------------------------------------------------------------------
+# Admin: categories
+# ---------------------------------------------------------------------------
+
+@app.get("/admin/categories")
+def admin_categories_page(request: Request):
+    try:
+        require_admin(request)
+    except PermissionError:
+        return RedirectResponse("/login", status_code=303)
+
+    with closing(db_connect()) as conn:
+        categories = conn.execute(
+            "SELECT * FROM categories ORDER BY display_order, name"
+        ).fetchall()
+    return templates.TemplateResponse(
+        request, "admin_categories.html", base_context(request, categories=categories)
+    )
+
+
+@app.post("/admin/categories/create")
+def admin_category_create(
+    request: Request,
+    name: str = Form(...),
+    display_order: int = Form(0),
+):
+    try:
+        require_admin(request)
+    except PermissionError:
+        return RedirectResponse("/login", status_code=303)
+
+    name = name.strip()
+    if not name:
+        set_flash(request, "danger", "Category name is required.")
+        return RedirectResponse("/admin/categories", status_code=303)
+
+    ts = now_iso()
+    try:
+        with closing(db_connect()) as conn:
+            conn.execute(
+                "INSERT INTO categories (name, display_order, created_at, updated_at) VALUES (?, ?, ?, ?)",
+                (name, display_order, ts, ts),
+            )
+            conn.commit()
+    except sqlite3.IntegrityError:
+        set_flash(request, "danger", "A category with that name already exists.")
+        return RedirectResponse("/admin/categories", status_code=303)
+
+    set_flash(request, "success", "Category created.")
+    return RedirectResponse("/admin/categories", status_code=303)
+
+
+@app.post("/admin/categories/{cat_id}/update")
+def admin_category_update(
+    request: Request,
+    cat_id: int,
+    name: str = Form(...),
+    display_order: int = Form(0),
+):
+    try:
+        require_admin(request)
+    except PermissionError:
+        return RedirectResponse("/login", status_code=303)
+
+    name = name.strip()
+    if not name:
+        set_flash(request, "danger", "Category name is required.")
+        return RedirectResponse("/admin/categories", status_code=303)
+
+    try:
+        with closing(db_connect()) as conn:
+            result = conn.execute(
+                "UPDATE categories SET name = ?, display_order = ?, updated_at = ? WHERE id = ?",
+                (name, display_order, now_iso(), cat_id),
+            )
+            conn.commit()
+        if result.rowcount == 0:
+            set_flash(request, "danger", "Category not found.")
+    except sqlite3.IntegrityError:
+        set_flash(request, "danger", "A category with that name already exists.")
+        return RedirectResponse("/admin/categories", status_code=303)
+
+    set_flash(request, "success", "Category updated.")
+    return RedirectResponse("/admin/categories", status_code=303)
+
+
+@app.post("/admin/categories/{cat_id}/delete")
+def admin_category_delete(request: Request, cat_id: int):
+    try:
+        require_admin(request)
+    except PermissionError:
+        return RedirectResponse("/login", status_code=303)
+
+    with closing(db_connect()) as conn:
+        conn.execute("DELETE FROM categories WHERE id = ?", (cat_id,))
+        conn.commit()
+
+    set_flash(request, "success", "Category deleted.")
+    return RedirectResponse("/admin/categories", status_code=303)
+
+
+@app.get("/admin/categories/{cat_id}/videos")
+def admin_category_videos_page(request: Request, cat_id: int):
+    try:
+        require_admin(request)
+    except PermissionError:
+        return RedirectResponse("/login", status_code=303)
+
+    with closing(db_connect()) as conn:
+        category = conn.execute("SELECT * FROM categories WHERE id = ?", (cat_id,)).fetchone()
+        if not category:
+            set_flash(request, "danger", "Category not found.")
+            return RedirectResponse("/admin/categories", status_code=303)
+        assigned_ids = {
+            row["video_id"]
+            for row in conn.execute(
+                "SELECT video_id FROM video_categories WHERE category_id = ?", (cat_id,)
+            ).fetchall()
+        }
+
+    all_videos: list[dict[str, Any]] = []
+    error_message = None
+    try:
+        all_videos = goro_list_videos()
+    except GoroAPIError:
+        error_message = "Failed to load videos from goro API."
+
+    assigned_videos = [v for v in all_videos if v["public_id"] in assigned_ids]
+    available_videos = [v for v in all_videos if v["public_id"] not in assigned_ids]
+    return templates.TemplateResponse(
+        request,
+        "admin_category_videos.html",
+        base_context(
+            request,
+            category=category,
+            assigned_videos=assigned_videos,
+            available_videos=available_videos,
+            error_message=error_message,
+        ),
+    )
+
+
+@app.post("/admin/categories/{cat_id}/videos/add")
+def admin_category_video_add(request: Request, cat_id: int, video_id: str = Form(...)):
+    try:
+        require_admin(request)
+    except PermissionError:
+        return RedirectResponse("/login", status_code=303)
+
+    with closing(db_connect()) as conn:
+        if not conn.execute("SELECT id FROM categories WHERE id = ?", (cat_id,)).fetchone():
+            set_flash(request, "danger", "Category not found.")
+            return RedirectResponse("/admin/categories", status_code=303)
+        conn.execute(
+            "INSERT OR IGNORE INTO video_categories (video_id, category_id) VALUES (?, ?)",
+            (video_id, cat_id),
+        )
+        conn.commit()
+
+    set_flash(request, "success", "Video added to category.")
+    return RedirectResponse(f"/admin/categories/{int(cat_id)}/videos", status_code=303)
+
+
+@app.post("/admin/categories/{cat_id}/videos/remove/{video_id}")
+def admin_category_video_remove(request: Request, cat_id: int, video_id: str):
+    try:
+        require_admin(request)
+    except PermissionError:
+        return RedirectResponse("/login", status_code=303)
+
+    with closing(db_connect()) as conn:
+        conn.execute(
+            "DELETE FROM video_categories WHERE video_id = ? AND category_id = ?",
+            (video_id, cat_id),
+        )
+        conn.commit()
+
+    set_flash(request, "success", "Video removed from category.")
+    return RedirectResponse(f"/admin/categories/{int(cat_id)}/videos", status_code=303)
+
+
+# ---------------------------------------------------------------------------
+# Admin: series
+# ---------------------------------------------------------------------------
+
+@app.get("/admin/series")
+def admin_series_page(request: Request):
+    try:
+        require_admin(request)
+    except PermissionError:
+        return RedirectResponse("/login", status_code=303)
+
+    with closing(db_connect()) as conn:
+        series_list = conn.execute(
+            "SELECT * FROM series ORDER BY display_order, name"
+        ).fetchall()
+    return templates.TemplateResponse(
+        request, "admin_series.html", base_context(request, series_list=series_list)
+    )
+
+
+@app.post("/admin/series/create")
+def admin_series_create(
+    request: Request,
+    name: str = Form(...),
+    display_order: int = Form(0),
+):
+    try:
+        require_admin(request)
+    except PermissionError:
+        return RedirectResponse("/login", status_code=303)
+
+    name = name.strip()
+    if not name:
+        set_flash(request, "danger", "Series name is required.")
+        return RedirectResponse("/admin/series", status_code=303)
+
+    ts = now_iso()
+    try:
+        with closing(db_connect()) as conn:
+            conn.execute(
+                "INSERT INTO series (name, display_order, created_at, updated_at) VALUES (?, ?, ?, ?)",
+                (name, display_order, ts, ts),
+            )
+            conn.commit()
+    except sqlite3.IntegrityError:
+        set_flash(request, "danger", "A series with that name already exists.")
+        return RedirectResponse("/admin/series", status_code=303)
+
+    set_flash(request, "success", "Series created.")
+    return RedirectResponse("/admin/series", status_code=303)
+
+
+@app.post("/admin/series/{series_id}/update")
+def admin_series_update(
+    request: Request,
+    series_id: int,
+    name: str = Form(...),
+    display_order: int = Form(0),
+):
+    try:
+        require_admin(request)
+    except PermissionError:
+        return RedirectResponse("/login", status_code=303)
+
+    name = name.strip()
+    if not name:
+        set_flash(request, "danger", "Series name is required.")
+        return RedirectResponse("/admin/series", status_code=303)
+
+    try:
+        with closing(db_connect()) as conn:
+            result = conn.execute(
+                "UPDATE series SET name = ?, display_order = ?, updated_at = ? WHERE id = ?",
+                (name, display_order, now_iso(), series_id),
+            )
+            conn.commit()
+        if result.rowcount == 0:
+            set_flash(request, "danger", "Series not found.")
+    except sqlite3.IntegrityError:
+        set_flash(request, "danger", "A series with that name already exists.")
+        return RedirectResponse("/admin/series", status_code=303)
+
+    set_flash(request, "success", "Series updated.")
+    return RedirectResponse("/admin/series", status_code=303)
+
+
+@app.post("/admin/series/{series_id}/delete")
+def admin_series_delete(request: Request, series_id: int):
+    try:
+        require_admin(request)
+    except PermissionError:
+        return RedirectResponse("/login", status_code=303)
+
+    with closing(db_connect()) as conn:
+        conn.execute("DELETE FROM series WHERE id = ?", (series_id,))
+        conn.commit()
+
+    set_flash(request, "success", "Series deleted.")
+    return RedirectResponse("/admin/series", status_code=303)
+
+
+@app.get("/admin/series/{series_id}/videos")
+def admin_series_videos_page(request: Request, series_id: int):
+    try:
+        require_admin(request)
+    except PermissionError:
+        return RedirectResponse("/login", status_code=303)
+
+    with closing(db_connect()) as conn:
+        series = conn.execute("SELECT * FROM series WHERE id = ?", (series_id,)).fetchone()
+        if not series:
+            set_flash(request, "danger", "Series not found.")
+            return RedirectResponse("/admin/series", status_code=303)
+        membership_rows = conn.execute(
+            """
+            SELECT video_id, series_order, created_at
+              FROM video_series
+             WHERE series_id = ?
+             ORDER BY COALESCE(series_order, 2147483647), created_at
+            """,
+            (series_id,),
+        ).fetchall()
+
+    assigned_ids = {row["video_id"] for row in membership_rows}
+    order_map = {row["video_id"]: row["series_order"] for row in membership_rows}
+
+    all_videos: list[dict[str, Any]] = []
+    error_message = None
+    try:
+        all_videos = goro_list_videos()
+    except GoroAPIError:
+        error_message = "Failed to load videos from goro API."
+
+    video_lookup = {v["public_id"]: v for v in all_videos}
+    assigned_videos = []
+    for row in membership_rows:
+        v = video_lookup.get(row["video_id"])
+        if v:
+            v = dict(v)
+            v["series_order"] = order_map[row["video_id"]]
+            assigned_videos.append(v)
+
+    available_videos = [v for v in all_videos if v["public_id"] not in assigned_ids]
+    return templates.TemplateResponse(
+        request,
+        "admin_series_videos.html",
+        base_context(
+            request,
+            series=series,
+            assigned_videos=assigned_videos,
+            available_videos=available_videos,
+            error_message=error_message,
+        ),
+    )
+
+
+@app.post("/admin/series/{series_id}/videos/add")
+def admin_series_video_add(
+    request: Request,
+    series_id: int,
+    video_id: str = Form(...),
+    series_order: str = Form(""),
+):
+    try:
+        require_admin(request)
+    except PermissionError:
+        return RedirectResponse("/login", status_code=303)
+
+    order_val: int | None = None
+    if series_order.strip():
+        try:
+            order_val = int(series_order.strip())
+        except ValueError:
+            set_flash(request, "danger", "Order must be an integer.")
+            return RedirectResponse(f"/admin/series/{int(series_id)}/videos", status_code=303)
+
+    with closing(db_connect()) as conn:
+        if not conn.execute("SELECT id FROM series WHERE id = ?", (series_id,)).fetchone():
+            set_flash(request, "danger", "Series not found.")
+            return RedirectResponse("/admin/series", status_code=303)
+        ts = now_iso()
+        conn.execute(
+            """
+            INSERT INTO video_series (video_id, series_id, series_order, created_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT (video_id) DO UPDATE
+               SET series_id = excluded.series_id,
+                   series_order = excluded.series_order,
+                   created_at = excluded.created_at
+            """,
+            (video_id, series_id, order_val, ts),
+        )
+        conn.commit()
+
+    set_flash(request, "success", "Video added to series.")
+    return RedirectResponse(f"/admin/series/{int(series_id)}/videos", status_code=303)
+
+
+@app.post("/admin/series/{series_id}/videos/update/{video_id}")
+def admin_series_video_update_order(
+    request: Request,
+    series_id: int,
+    video_id: str,
+    series_order: str = Form(""),
+):
+    try:
+        require_admin(request)
+    except PermissionError:
+        return RedirectResponse("/login", status_code=303)
+
+    order_val: int | None = None
+    if series_order.strip():
+        try:
+            order_val = int(series_order.strip())
+        except ValueError:
+            set_flash(request, "danger", "Order must be an integer.")
+            return RedirectResponse(f"/admin/series/{int(series_id)}/videos", status_code=303)
+
+    with closing(db_connect()) as conn:
+        conn.execute(
+            "UPDATE video_series SET series_order = ? WHERE video_id = ? AND series_id = ?",
+            (order_val, video_id, series_id),
+        )
+        conn.commit()
+
+    set_flash(request, "success", "Order updated.")
+    return RedirectResponse(f"/admin/series/{int(series_id)}/videos", status_code=303)
+
+
+@app.post("/admin/series/{series_id}/videos/remove/{video_id}")
+def admin_series_video_remove(request: Request, series_id: int, video_id: str):
+    try:
+        require_admin(request)
+    except PermissionError:
+        return RedirectResponse("/login", status_code=303)
+
+    with closing(db_connect()) as conn:
+        conn.execute(
+            "DELETE FROM video_series WHERE video_id = ? AND series_id = ?",
+            (video_id, series_id),
+        )
+        conn.commit()
+
+    set_flash(request, "success", "Video removed from series.")
+    return RedirectResponse(f"/admin/series/{int(series_id)}/videos", status_code=303)

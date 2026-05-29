@@ -18,6 +18,8 @@
         {% if current_user['role'] == 'admin' %}
           <a class="btn btn-outline-warning btn-sm" href="/admin/users">Admin: Users</a>
           <a class="btn btn-outline-warning btn-sm" href="/admin/videos">Admin: Videos</a>
+          <a class="btn btn-outline-warning btn-sm" href="/admin/categories">Admin: Categories</a>
+          <a class="btn btn-outline-warning btn-sm" href="/admin/series">Admin: Series</a>
         {% endif %}
         <form method="post" action="/logout" class="d-inline">
           <button class="btn btn-light btn-sm" type="submit">Logout</button>
