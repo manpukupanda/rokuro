@@ -1036,7 +1036,7 @@ def admin_category_video_add(request: Request, cat_id: int, video_id: str = Form
         conn.commit()
 
     set_flash(request, "success", "Video added to category.")
-    return RedirectResponse(f"/admin/categories/{cat_id}/videos", status_code=303)
+    return RedirectResponse(f"/admin/categories/{int(cat_id)}/videos", status_code=303)
 
 
 @app.post("/admin/categories/{cat_id}/videos/remove/{video_id}")
@@ -1054,7 +1054,7 @@ def admin_category_video_remove(request: Request, cat_id: int, video_id: str):
         conn.commit()
 
     set_flash(request, "success", "Video removed from category.")
-    return RedirectResponse(f"/admin/categories/{cat_id}/videos", status_code=303)
+    return RedirectResponse(f"/admin/categories/{int(cat_id)}/videos", status_code=303)
 
 
 # ---------------------------------------------------------------------------
@@ -1231,7 +1231,7 @@ def admin_series_video_add(
             order_val = int(series_order.strip())
         except ValueError:
             set_flash(request, "danger", "Order must be an integer.")
-            return RedirectResponse(f"/admin/series/{series_id}/videos", status_code=303)
+            return RedirectResponse(f"/admin/series/{int(series_id)}/videos", status_code=303)
 
     with closing(db_connect()) as conn:
         if not conn.execute("SELECT id FROM series WHERE id = ?", (series_id,)).fetchone():
@@ -1252,7 +1252,7 @@ def admin_series_video_add(
         conn.commit()
 
     set_flash(request, "success", "Video added to series.")
-    return RedirectResponse(f"/admin/series/{series_id}/videos", status_code=303)
+    return RedirectResponse(f"/admin/series/{int(series_id)}/videos", status_code=303)
 
 
 @app.post("/admin/series/{series_id}/videos/update/{video_id}")
@@ -1273,7 +1273,7 @@ def admin_series_video_update_order(
             order_val = int(series_order.strip())
         except ValueError:
             set_flash(request, "danger", "Order must be an integer.")
-            return RedirectResponse(f"/admin/series/{series_id}/videos", status_code=303)
+            return RedirectResponse(f"/admin/series/{int(series_id)}/videos", status_code=303)
 
     with closing(db_connect()) as conn:
         conn.execute(
@@ -1283,7 +1283,7 @@ def admin_series_video_update_order(
         conn.commit()
 
     set_flash(request, "success", "Order updated.")
-    return RedirectResponse(f"/admin/series/{series_id}/videos", status_code=303)
+    return RedirectResponse(f"/admin/series/{int(series_id)}/videos", status_code=303)
 
 
 @app.post("/admin/series/{series_id}/videos/remove/{video_id}")
@@ -1301,4 +1301,4 @@ def admin_series_video_remove(request: Request, series_id: int, video_id: str):
         conn.commit()
 
     set_flash(request, "success", "Video removed from series.")
-    return RedirectResponse(f"/admin/series/{series_id}/videos", status_code=303)
+    return RedirectResponse(f"/admin/series/{int(series_id)}/videos", status_code=303)
