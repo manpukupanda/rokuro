@@ -45,6 +45,9 @@
     </div>
     <div class="card-body">
       <h3 class="h6 mb-1 text-truncate">{{ video['title'] or video['original_name'] }}</h3>
+      {% if video.get('description') %}
+      <p class="small mb-2">{{ video['description']|truncate(80, True, '...') }}</p>
+      {% endif %}
       <p class="small text-muted mb-2">{{ video['visibility'] }} / {{ video['status'] }}</p>
       <a class="btn btn-primary btn-sm" href="/?video_id={{ video['public_id'] }}">Play</a>
     </div>

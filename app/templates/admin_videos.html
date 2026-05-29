@@ -25,6 +25,8 @@
       <th>Title</th>
       <th>Status</th>
       <th>Visibility</th>
+      <th>Display Order</th>
+      <th>Description</th>
       <th>Tags</th>
       <th>Actions</th>
     </tr>
@@ -36,6 +38,8 @@
       <td>{{ video['title'] or video['original_name'] }}</td>
       <td>{{ video['status'] }}</td>
       <td>{{ video['visibility'] }}</td>
+      <td>{{ video['display_order'] }}</td>
+      <td class="small text-muted">{{ video['description']|default('')|truncate(80, True, '...') if video['description'] else '-' }}</td>
       <td class="small text-muted">{{ video['tags_str'] or '-' }}</td>
       <td>
         <div class="d-flex flex-column gap-1">
@@ -49,6 +53,13 @@
           <form method="post" action="/admin/videos/{{ video['public_id'] }}/tags" class="d-flex gap-1">
             <input class="form-control form-control-sm" name="tags" value="{{ video['tags_str'] }}" placeholder="#tag1 #tag2">
             <button class="btn btn-sm btn-outline-secondary" type="submit">Tags</button>
+          </form>
+          <form method="post" action="/admin/videos/{{ video['public_id'] }}/metadata" class="d-flex flex-column gap-1">
+            <div class="d-flex gap-1">
+              <input class="form-control form-control-sm" type="number" name="display_order" value="{{ video['display_order'] }}" placeholder="Display order">
+              <button class="btn btn-sm btn-outline-secondary" type="submit">Meta</button>
+            </div>
+            <textarea class="form-control form-control-sm" name="description" rows="2" placeholder="Description">{{ video['description'] }}</textarea>
           </form>
           <form method="post" action="/admin/videos/{{ video['public_id'] }}/delete" onsubmit="return confirm('Delete this video?')">
             <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
