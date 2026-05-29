@@ -169,6 +169,16 @@ def init_db() -> None:
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS video_metadata (
+                video_id TEXT PRIMARY KEY,
+                description TEXT NOT NULL DEFAULT '',
+                display_order INTEGER NOT NULL DEFAULT 0,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
         conn.commit()
 
 
@@ -235,6 +245,87 @@ def set_video_tags(conn: sqlite3.Connection, video_id: str, tags_str: str) -> No
     )
 
 
+def load_video_metadata(
+    conn: sqlite3.Connection, video_ids: list[str]
+) -> dict[str, dict[str, Any]]:
+    if not video_ids:
+        return {}
+    placeholders = ",".join("?" for _ in video_ids)
+    rows = conn.execute(
+        f"""
+        SELECT video_id, description, display_order
+          FROM video_metadata
+         WHERE video_id IN ({placeholders})
+        """,
+        tuple(video_ids),
+    ).fetchall()
+    return {
+        row["video_id"]: {
+            "description": row["description"],
+            "display_order": row["display_order"],
+        }
+        for row in rows
+    }
+
+
+def load_series_orders(
+    conn: sqlite3.Connection, video_ids: list[str]
+) -> dict[str, int | None]:
+    if not video_ids:
+        return {}
+    placeholders = ",".join("?" for _ in video_ids)
+    rows = conn.execute(
+        f"""
+        SELECT video_id, series_order
+          FROM video_series
+         WHERE video_id IN ({placeholders})
+        """,
+        tuple(video_ids),
+    ).fetchall()
+    return {row["video_id"]: row["series_order"] for row in rows}
+
+
+def apply_local_video_metadata(videos: list[dict[str, Any]]) -> None:
+    if not videos:
+        return
+    video_ids = [v["public_id"] for v in videos if v.get("public_id")]
+    with closing(db_connect()) as conn:
+        meta_map = load_video_metadata(conn, video_ids)
+        series_order_map = load_series_orders(conn, video_ids)
+    for video in videos:
+        public_id = video.get("public_id", "")
+        meta = meta_map.get(public_id)
+        if meta:
+            video["description"] = meta["description"]
+            video["display_order"] = meta["display_order"]
+        else:
+            video["description"] = ""
+            video["display_order"] = 0
+        video["series_order"] = series_order_map.get(public_id)
+
+
+def sort_videos(videos: list[dict[str, Any]], *, prefer_series_order: bool = False) -> list[dict[str, Any]]:
+    max_order = 2147483647
+    if prefer_series_order:
+        return sorted(
+            videos,
+            key=lambda v: (
+                v.get("series_order") if v.get("series_order") is not None else max_order,
+                int(v.get("display_order", 0)),
+                v.get("created_at", ""),
+                v.get("public_id", ""),
+            ),
+        )
+    return sorted(
+        videos,
+        key=lambda v: (
+            int(v.get("display_order", 0)),
+            v.get("created_at", ""),
+            v.get("public_id", ""),
+        ),
+    )
+
+
 # ---------------------------------------------------------------------------
 # Classification helpers (used by top_page)
 # ---------------------------------------------------------------------------
@@ -272,12 +363,14 @@ def load_classification_for_videos(
             if cid not in cat_map:
                 cat_map[cid] = {"name": row["name"], "videos": []}
             cat_map[cid]["videos"].append(video_lookup[row["video_id"]])
+        for cat in cat_map.values():
+            cat["videos"] = sort_videos(cat["videos"])
         categories_with_videos = [v for v in cat_map.values() if v["videos"]]
 
         # ---- series ----
         series_rows = conn.execute(
             """
-            SELECT vs.series_id, vs.video_id, s.name
+            SELECT vs.series_id, vs.video_id, vs.series_order, s.name
               FROM video_series vs
               JOIN series s ON s.id = vs.series_id
              ORDER BY s.display_order, s.name,
@@ -291,7 +384,11 @@ def load_classification_for_videos(
             sid = row["series_id"]
             if sid not in series_map:
                 series_map[sid] = {"name": row["name"], "videos": []}
-            series_map[sid]["videos"].append(video_lookup[row["video_id"]])
+            video = dict(video_lookup[row["video_id"]])
+            video["series_order"] = row["series_order"]
+            series_map[sid]["videos"].append(video)
+        for series in series_map.values():
+            series["videos"] = sort_videos(series["videos"], prefer_series_order=True)
         series_with_videos = [v for v in series_map.values() if v["videos"]]
 
         # ---- tags ----
@@ -311,6 +408,8 @@ def load_classification_for_videos(
             if tid not in tag_map:
                 tag_map[tid] = {"name": row["name"], "videos": []}
             tag_map[tid]["videos"].append(video_lookup[row["video_id"]])
+        for tag in tag_map.values():
+            tag["videos"] = sort_videos(tag["videos"])
         tags_with_videos = [v for v in tag_map.values() if v["videos"]]
 
     return categories_with_videos, series_with_videos, tags_with_videos
@@ -428,6 +527,8 @@ def top_page(request: Request, video_id: str | None = None):
         videos = [v for v in videos if v.get("visibility") == "public" and v.get("status") == "ready"]
     elif user["role"] != "admin":
         videos = [v for v in videos if v.get("status") == "ready"]
+    apply_local_video_metadata(videos)
+    videos = sort_videos(videos)
 
     thumbnail_names: dict[str, str] = {}
     video_details: dict[str, dict[str, Any]] = {}
@@ -772,6 +873,8 @@ def admin_videos_page(request: Request):
         videos = goro_list_videos()
     except GoroAPIError:
         error_message = "Failed to load videos from goro API."
+    apply_local_video_metadata(videos)
+    videos = sort_videos(videos)
 
     with closing(db_connect()) as conn:
         tag_rows = conn.execute(
@@ -873,6 +976,42 @@ def admin_video_update_tags(request: Request, video_id: str, tags: str = Form(""
         conn.commit()
 
     set_flash(request, "success", "Tags updated.")
+    return RedirectResponse("/admin/videos", status_code=303)
+
+
+@app.post("/admin/videos/{video_id}/metadata")
+def admin_video_update_metadata(
+    request: Request,
+    video_id: str,
+    description: str = Form(""),
+    display_order: str = Form("0"),
+):
+    try:
+        require_admin(request)
+    except PermissionError:
+        return RedirectResponse("/login", status_code=303)
+
+    try:
+        order_val = int(display_order.strip() or "0")
+    except ValueError:
+        set_flash(request, "danger", "Display order must be an integer.")
+        return RedirectResponse("/admin/videos", status_code=303)
+
+    with closing(db_connect()) as conn:
+        conn.execute(
+            """
+            INSERT INTO video_metadata (video_id, description, display_order, updated_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT (video_id) DO UPDATE
+               SET description = excluded.description,
+                   display_order = excluded.display_order,
+                   updated_at = excluded.updated_at
+            """,
+            (video_id, description.strip(), order_val, now_iso()),
+        )
+        conn.commit()
+
+    set_flash(request, "success", "Metadata updated.")
     return RedirectResponse("/admin/videos", status_code=303)
 
 
