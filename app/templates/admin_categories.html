@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Admin Categories - Rokuro{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Category Management</h1>
+
+<div class="card mb-4">
+  <div class="card-body">
+    <h2 class="h5">Create Category</h2>
+    <form method="post" action="/admin/categories/create" class="row g-2">
+      <div class="col-md-6">
+        <input class="form-control" name="name" placeholder="Category Name" required>
+      </div>
+      <div class="col-md-3">
+        <input class="form-control" type="number" name="display_order" placeholder="Display Order" value="0">
+      </div>
+      <div class="col-md-3">
+        <button class="btn btn-primary w-100" type="submit">Create</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="table-responsive">
+<table class="table table-striped align-middle">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Display Order</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for cat in categories %}
+    <tr>
+      <td>{{ cat['name'] }}</td>
+      <td>{{ cat['display_order'] }}</td>
+      <td>
+        <div class="d-flex flex-column gap-1">
+          <form method="post" action="/admin/categories/{{ cat['id'] }}/update" class="d-flex gap-1">
+            <input class="form-control form-control-sm" name="name" value="{{ cat['name'] }}" required>
+            <input class="form-control form-control-sm" type="number" name="display_order" value="{{ cat['display_order'] }}" style="width: 90px;">
+            <button class="btn btn-sm btn-outline-primary" type="submit">Update</button>
+          </form>
+          <div class="d-flex gap-1">
+            <a class="btn btn-sm btn-outline-secondary" href="/admin/categories/{{ cat['id'] }}/videos">Manage Videos</a>
+            <form method="post" action="/admin/categories/{{ cat['id'] }}/delete" onsubmit="return confirm('Delete category \'{{ cat['name'] }}\'? Videos will not be deleted.')">
+              <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+            </form>
+          </div>
+        </div>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="3" class="text-muted">No categories yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

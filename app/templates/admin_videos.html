@@ -25,6 +25,7 @@
       <th>Title</th>
       <th>Status</th>
       <th>Visibility</th>
+      <th>Tags</th>
       <th>Actions</th>
     </tr>
   </thead>
@@ -35,14 +36,19 @@
       <td>{{ video['title'] or video['original_name'] }}</td>
       <td>{{ video['status'] }}</td>
       <td>{{ video['visibility'] }}</td>
+      <td class="small text-muted">{{ video['tags_str'] or '-' }}</td>
       <td>
-        <div class="d-flex gap-1">
+        <div class="d-flex flex-column gap-1">
           <form method="post" action="/admin/videos/{{ video['public_id'] }}/visibility" class="d-flex gap-1">
             <select class="form-select form-select-sm" name="visibility">
               <option value="public" {% if video['visibility'] == 'public' %}selected{% endif %}>public</option>
               <option value="private" {% if video['visibility'] == 'private' %}selected{% endif %}>private</option>
             </select>
             <button class="btn btn-sm btn-outline-primary" type="submit">Apply</button>
+          </form>
+          <form method="post" action="/admin/videos/{{ video['public_id'] }}/tags" class="d-flex gap-1">
+            <input class="form-control form-control-sm" name="tags" value="{{ video['tags_str'] }}" placeholder="#tag1 #tag2">
+            <button class="btn btn-sm btn-outline-secondary" type="submit">Tags</button>
           </form>
           <form method="post" action="/admin/videos/{{ video['public_id'] }}/delete" onsubmit="return confirm('Delete this video?')">
             <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>

@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Series: {{ series['name'] }} - Rokuro{% endblock %}
+{% block content %}
+<a class="btn btn-outline-secondary btn-sm mb-3" href="/admin/series">&larr; Back to Series</a>
+<h1 class="h3 mb-3">Series: {{ series['name'] }}</h1>
+
+{% if error_message %}
+  <div class="alert alert-danger">{{ error_message }}</div>
+{% endif %}
+
+<h2 class="h5 mt-4">Assigned Videos</h2>
+<p class="small text-muted">Videos are displayed in ascending order of "Order". Leave blank to place at the end.</p>
+{% if assigned_videos %}
+<div class="table-responsive mb-4">
+<table class="table table-sm align-middle">
+  <thead>
+    <tr>
+      <th>Order</th>
+      <th>Title</th>
+      <th>Status</th>
+      <th>Visibility</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for video in assigned_videos %}
+    <tr>
+      <td style="width: 160px;">
+        <form method="post" action="/admin/series/{{ series['id'] }}/videos/update/{{ video['public_id'] }}" class="d-flex gap-1">
+          <input class="form-control form-control-sm" type="number" name="series_order"
+                 value="{{ video['series_order'] if video['series_order'] is not none else '' }}"
+                 placeholder="(last)" style="width: 90px;">
+          <button class="btn btn-sm btn-outline-primary" type="submit">Set</button>
+        </form>
+      </td>
+      <td>{{ video['title'] or video['original_name'] }}</td>
+      <td>{{ video['status'] }}</td>
+      <td>{{ video['visibility'] }}</td>
+      <td>
+        <form method="post" action="/admin/series/{{ series['id'] }}/videos/remove/{{ video['public_id'] }}">
+          <button class="btn btn-sm btn-outline-danger" type="submit">Remove</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+  <p class="text-muted mb-4">No videos assigned yet.</p>
+{% endif %}
+
+<h2 class="h5">Add Video</h2>
+{% if available_videos %}
+<form method="post" action="/admin/series/{{ series['id'] }}/videos/add" class="row g-2 mb-4">
+  <div class="col-md-7">
+    <select class="form-select" name="video_id">
+      {% for video in available_videos %}
+      <option value="{{ video['public_id'] }}">
+        {{ video['title'] or video['original_name'] }} ({{ video['status'] }} / {{ video['visibility'] }})
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2">
+    <input class="form-control" type="number" name="series_order" placeholder="Order (optional)">
+  </div>
+  <div class="col-md-3">
+    <button class="btn btn-primary w-100" type="submit">Add</button>
+  </div>
+</form>
+{% else %}
+  <p class="text-muted">All available videos are already in this series.</p>
+{% endif %}
+{% endblock %}

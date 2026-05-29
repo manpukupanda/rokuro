@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Category: {{ category['name'] }} - Rokuro{% endblock %}
+{% block content %}
+<a class="btn btn-outline-secondary btn-sm mb-3" href="/admin/categories">&larr; Back to Categories</a>
+<h1 class="h3 mb-3">Category: {{ category['name'] }}</h1>
+
+{% if error_message %}
+  <div class="alert alert-danger">{{ error_message }}</div>
+{% endif %}
+
+<h2 class="h5 mt-4">Assigned Videos</h2>
+{% if assigned_videos %}
+<div class="table-responsive mb-4">
+<table class="table table-sm align-middle">
+  <thead>
+    <tr>
+      <th>Title</th>
+      <th>Status</th>
+      <th>Visibility</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for video in assigned_videos %}
+    <tr>
+      <td>{{ video['title'] or video['original_name'] }}</td>
+      <td>{{ video['status'] }}</td>
+      <td>{{ video['visibility'] }}</td>
+      <td>
+        <form method="post" action="/admin/categories/{{ category['id'] }}/videos/remove/{{ video['public_id'] }}">
+          <button class="btn btn-sm btn-outline-danger" type="submit">Remove</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+  <p class="text-muted mb-4">No videos assigned yet.</p>
+{% endif %}
+
+<h2 class="h5">Add Video</h2>
+{% if available_videos %}
+<form method="post" action="/admin/categories/{{ category['id'] }}/videos/add" class="d-flex gap-2 mb-4">
+  <select class="form-select" name="video_id">
+    {% for video in available_videos %}
+    <option value="{{ video['public_id'] }}">
+      {{ video['title'] or video['original_name'] }} ({{ video['status'] }} / {{ video['visibility'] }})
+    </option>
+    {% endfor %}
+  </select>
+  <button class="btn btn-primary" type="submit">Add</button>
+</form>
+{% else %}
+  <p class="text-muted">All available videos are already in this category.</p>
+{% endif %}
+{% endblock %}
