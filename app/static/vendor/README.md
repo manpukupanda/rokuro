@@ -1,13 +1,12 @@
 Bundled frontend assets (self-hosted, no CDN):
 
-- Bootstrap 5.3.8
-  - `bootstrap.min.css`
-  - `bootstrap.bundle.min.js`
+- Tailwind CSS 3.4.17 + Flowbite 2.5.2
+  - generated bundle: `tailwind/3.4.17/flowbite.min.css`
 - Shaka Player 5.1.6
   - `shaka-player.compiled.js`
 
-Update policy:
+Build / update policy:
 
-1. Fetch latest stable assets from official package releases.
-2. Place files under versioned directories in this `vendor/` tree.
-3. Update template references to the new versioned paths.
+1. Install frontend build dependencies from the repository root with `npm install`.
+2. Rebuild the vendored stylesheet with `npm run build:css`.
+3. Keep runtime-served files under this versioned `vendor/` tree and update template references when versions change.

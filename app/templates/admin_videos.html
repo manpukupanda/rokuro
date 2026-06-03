@@ -1,74 +1,90 @@
 {% extends "base.html" %}
 {% block title %}Admin Videos - Rokuro{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">Video Management</h1>
-
-{% if error_message %}
-  <div class="alert alert-danger">{{ error_message }}</div>
-{% endif %}
-
-<div class="card mb-4">
-  <div class="card-body">
-    <h2 class="h5">Upload Video</h2>
-    <form method="post" action="/admin/videos/upload" enctype="multipart/form-data" class="row g-2">
-      <div class="col-md-10"><input class="form-control" type="file" name="file" accept="video/mp4,.mp4" required></div>
-      <div class="col-md-2"><button class="btn btn-primary w-100" type="submit">Upload</button></div>
-    </form>
+<section class="space-y-8">
+  <div class="space-y-2">
+    <h1 class="text-3xl font-semibold tracking-tight text-gray-900">Video Management</h1>
+    <p class="text-sm text-gray-500">動画アップロード、公開設定、表示順、説明、タグを一括管理します。</p>
   </div>
-</div>
 
-<div class="table-responsive">
-<table class="table table-striped align-middle">
-  <thead>
-    <tr>
-      <th>ID</th>
-      <th>Title</th>
-      <th>Status</th>
-      <th>Visibility</th>
-      <th>Display Order</th>
-      <th>Description</th>
-      <th>Tags</th>
-      <th>Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for video in videos %}
-    <tr>
-      <td class="small">{{ video['public_id'] }}</td>
-      <td>{{ video['title'] or video['original_name'] }}</td>
-      <td>{{ video['status'] }}</td>
-      <td>{{ video['visibility'] }}</td>
-      <td>{{ video['display_order'] }}</td>
-      <td class="small text-muted">{{ video['description']|default('')|truncate(80, True, '...') if video['description'] else '-' }}</td>
-      <td class="small text-muted">{{ video['tags_str'] or '-' }}</td>
-      <td>
-        <div class="d-flex flex-column gap-1">
-          <form method="post" action="/admin/videos/{{ video['public_id'] }}/visibility" class="d-flex gap-1">
-            <select class="form-select form-select-sm" name="visibility">
-              <option value="public" {% if video['visibility'] == 'public' %}selected{% endif %}>public</option>
-              <option value="private" {% if video['visibility'] == 'private' %}selected{% endif %}>private</option>
-            </select>
-            <button class="btn btn-sm btn-outline-primary" type="submit">Apply</button>
-          </form>
-          <form method="post" action="/admin/videos/{{ video['public_id'] }}/tags" class="d-flex gap-1">
-            <input class="form-control form-control-sm" name="tags" value="{{ video['tags_str'] }}" placeholder="#tag1 #tag2">
-            <button class="btn btn-sm btn-outline-secondary" type="submit">Tags</button>
-          </form>
-          <form method="post" action="/admin/videos/{{ video['public_id'] }}/metadata" class="d-flex flex-column gap-1">
-            <div class="d-flex gap-1">
-              <input class="form-control form-control-sm" type="number" name="display_order" value="{{ video['display_order'] }}" placeholder="Display order">
-              <button class="btn btn-sm btn-outline-secondary" type="submit">Meta</button>
-            </div>
-            <textarea class="form-control form-control-sm" name="description" rows="2" placeholder="Description">{{ video['description'] }}</textarea>
-          </form>
-          <form method="post" action="/admin/videos/{{ video['public_id'] }}/delete" onsubmit="return confirm('Delete this video?')">
-            <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
-          </form>
-        </div>
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-</div>
+  {% if error_message %}
+    <div class="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-800 shadow-sm">
+      <svg class="mt-0.5 h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+      <span>{{ error_message }}</span>
+    </div>
+  {% endif %}
+
+  <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+    <div class="mb-6 space-y-2">
+      <h2 class="text-xl font-semibold text-gray-900">Upload Video</h2>
+      <p class="text-sm text-gray-500">MP4 ファイルを追加すると、バックエンドで取り込み処理が始まります。</p>
+    </div>
+    <form method="post" action="/admin/videos/upload" enctype="multipart/form-data" class="grid gap-4 lg:grid-cols-[1fr_auto]">
+      <input class="block w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-900 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-blue-700 hover:file:bg-blue-100 focus:border-blue-500 focus:ring-blue-500" type="file" name="file" accept="video/mp4,.mp4" required>
+      <button class="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-200" type="submit">Upload</button>
+    </form>
+  </section>
+
+  <section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+    <div class="border-b border-gray-200 px-6 py-5">
+      <h2 class="text-xl font-semibold text-gray-900">Videos</h2>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200 text-left text-sm text-gray-600">
+        <thead class="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
+          <tr>
+            <th class="px-6 py-4">ID</th>
+            <th class="px-6 py-4">Title</th>
+            <th class="px-6 py-4">Status</th>
+            <th class="px-6 py-4">Visibility</th>
+            <th class="px-6 py-4">Display Order</th>
+            <th class="px-6 py-4">Description</th>
+            <th class="px-6 py-4">Tags</th>
+            <th class="px-6 py-4">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 bg-white">
+          {% for video in videos %}
+          <tr class="align-top">
+            <td class="px-6 py-4 font-mono text-xs text-gray-500">{{ video['public_id'] }}</td>
+            <td class="px-6 py-4 font-medium text-gray-900">{{ video['title'] or video['original_name'] }}</td>
+            <td class="px-6 py-4 text-gray-700">{{ video['status'] }}</td>
+            <td class="px-6 py-4 text-gray-700">{{ video['visibility'] }}</td>
+            <td class="px-6 py-4 text-gray-700">{{ video['display_order'] }}</td>
+            <td class="px-6 py-4 text-sm text-gray-500">{{ video['description']|default('')|truncate(80, True, '...') if video['description'] else '-' }}</td>
+            <td class="px-6 py-4 text-sm text-gray-500">{{ video['tags_str'] or '-' }}</td>
+            <td class="px-6 py-4">
+              <div class="flex min-w-[19rem] flex-col gap-3">
+                <form method="post" action="/admin/videos/{{ video['public_id'] }}/visibility" class="flex gap-2">
+                  <select class="block w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500" name="visibility">
+                    <option value="public" {% if video['visibility'] == 'public' %}selected{% endif %}>public</option>
+                    <option value="private" {% if video['visibility'] == 'private' %}selected{% endif %}>private</option>
+                  </select>
+                  <button class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-200" type="submit">Apply</button>
+                </form>
+                <form method="post" action="/admin/videos/{{ video['public_id'] }}/tags" class="flex gap-2">
+                  <input class="block w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:ring-blue-500" name="tags" value="{{ video['tags_str'] }}" placeholder="#tag1 #tag2">
+                  <button class="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:border-blue-200 hover:text-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100" type="submit">Tags</button>
+                </form>
+                <form method="post" action="/admin/videos/{{ video['public_id'] }}/metadata" class="flex flex-col gap-2">
+                  <div class="flex gap-2">
+                    <input class="block w-32 rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:ring-blue-500" type="number" name="display_order" value="{{ video['display_order'] }}" placeholder="Display order">
+                    <button class="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:border-blue-200 hover:text-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100" type="submit">Meta</button>
+                  </div>
+                  <textarea class="block w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:ring-blue-500" name="description" rows="2" placeholder="Description">{{ video['description'] }}</textarea>
+                </form>
+                <form method="post" action="/admin/videos/{{ video['public_id'] }}/delete" onsubmit="return confirm('Delete this video?')">
+                  <button class="inline-flex items-center justify-center rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700 transition hover:bg-red-100 focus:outline-none focus:ring-4 focus:ring-red-100" type="submit">Delete</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</section>
 {% endblock %}

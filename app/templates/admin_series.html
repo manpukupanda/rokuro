@@ -1,59 +1,66 @@
 {% extends "base.html" %}
 {% block title %}Admin Series - Rokuro{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">Series Management</h1>
-
-<div class="card mb-4">
-  <div class="card-body">
-    <h2 class="h5">Create Series</h2>
-    <form method="post" action="/admin/series/create" class="row g-2">
-      <div class="col-md-6">
-        <input class="form-control" name="name" placeholder="Series Name" required>
-      </div>
-      <div class="col-md-3">
-        <input class="form-control" type="number" name="display_order" placeholder="Display Order" value="0">
-      </div>
-      <div class="col-md-3">
-        <button class="btn btn-primary w-100" type="submit">Create</button>
-      </div>
-    </form>
+<section class="space-y-8">
+  <div class="space-y-2">
+    <h1 class="text-3xl font-semibold tracking-tight text-gray-900">Series Management</h1>
+    <p class="text-sm text-gray-500">シリーズの作成、並び順調整、動画の登録順管理を行います。</p>
   </div>
-</div>
 
-<div class="table-responsive">
-<table class="table table-striped align-middle">
-  <thead>
-    <tr>
-      <th>Name</th>
-      <th>Display Order</th>
-      <th>Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for s in series_list %}
-    <tr>
-      <td>{{ s['name'] }}</td>
-      <td>{{ s['display_order'] }}</td>
-      <td>
-        <div class="d-flex flex-column gap-1">
-          <form method="post" action="/admin/series/{{ s['id'] }}/update" class="d-flex gap-1">
-            <input class="form-control form-control-sm" name="name" value="{{ s['name'] }}" required>
-            <input class="form-control form-control-sm" type="number" name="display_order" value="{{ s['display_order'] }}" style="width: 90px;">
-            <button class="btn btn-sm btn-outline-primary" type="submit">Update</button>
-          </form>
-          <div class="d-flex gap-1">
-            <a class="btn btn-sm btn-outline-secondary" href="/admin/series/{{ s['id'] }}/videos">Manage Videos</a>
-            <form method="post" action="/admin/series/{{ s['id'] }}/delete" onsubmit="return confirm('Delete series \'{{ s['name'] }}\'? Videos will not be deleted.')">
-              <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
-            </form>
-          </div>
-        </div>
-      </td>
-    </tr>
-    {% else %}
-    <tr><td colspan="3" class="text-muted">No series yet.</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
-</div>
+  <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+    <div class="mb-6 space-y-2">
+      <h2 class="text-xl font-semibold text-gray-900">Create Series</h2>
+      <p class="text-sm text-gray-500">関連動画をまとまりとして見せるシリーズを追加します。</p>
+    </div>
+    <form method="post" action="/admin/series/create" class="grid gap-4 md:grid-cols-[1.4fr_0.8fr_auto]">
+      <input class="block w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:ring-blue-500" name="name" placeholder="Series Name" required>
+      <input class="block w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:ring-blue-500" type="number" name="display_order" placeholder="Display Order" value="0">
+      <button class="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-200" type="submit">Create</button>
+    </form>
+  </section>
+
+  <section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+    <div class="border-b border-gray-200 px-6 py-5">
+      <h2 class="text-xl font-semibold text-gray-900">Series</h2>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200 text-left text-sm text-gray-600">
+        <thead class="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
+          <tr>
+            <th class="px-6 py-4">Name</th>
+            <th class="px-6 py-4">Display Order</th>
+            <th class="px-6 py-4">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 bg-white">
+          {% for s in series_list %}
+          <tr class="align-top">
+            <td class="px-6 py-4 font-medium text-gray-900">{{ s['name'] }}</td>
+            <td class="px-6 py-4 text-gray-700">{{ s['display_order'] }}</td>
+            <td class="px-6 py-4">
+              <div class="flex min-w-[18rem] flex-col gap-3">
+                <form method="post" action="/admin/series/{{ s['id'] }}/update" class="flex flex-col gap-3 sm:flex-row">
+                  <input class="block w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500" name="name" value="{{ s['name'] }}" required>
+                  <input class="block w-24 rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500" type="number" name="display_order" value="{{ s['display_order'] }}">
+                  <button class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-200" type="submit">Update</button>
+                </form>
+                <div class="flex flex-wrap gap-2">
+                  <a class="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:border-blue-200 hover:text-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100" href="/admin/series/{{ s['id'] }}/videos">Manage Videos</a>
+                  <form method="post" action="/admin/series/{{ s['id'] }}/delete" onsubmit="return confirm('Delete series \'{{ s['name'] }}\'? Videos will not be deleted.')">
+                    <button class="inline-flex items-center justify-center rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100 focus:outline-none focus:ring-4 focus:ring-red-100" type="submit">Delete</button>
+                  </form>
+                </div>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="3" class="px-6 py-8 text-center text-sm text-gray-500">No series yet.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</section>
 {% endblock %}
