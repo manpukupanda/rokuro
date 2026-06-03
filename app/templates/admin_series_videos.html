@@ -1,6 +1,6 @@
-{% extends "base.html" %}
+{% extends "admin_base.html" %}
 {% block title %}Series: {{ series['name'] }} - Rokuro{% endblock %}
-{% block content %}
+{% block admin_content %}
 <section class="space-y-8">
   <div class="space-y-2">
     <a class="inline-flex items-center gap-2 text-sm font-medium text-gray-500 transition hover:text-blue-700" href="/admin/series">
@@ -10,7 +10,7 @@
       Back to Series
     </a>
     <h1 class="text-3xl font-semibold tracking-tight text-gray-900">Series: {{ series['name'] }}</h1>
-    <p class="text-sm text-gray-500">シリーズに登録された動画の表示順と構成を編集します。</p>
+    <p class="text-sm text-gray-500">Edit the order and membership of videos in this series.</p>
   </div>
 
   {% if error_message %}
@@ -71,7 +71,7 @@
   <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
     <div class="mb-6 space-y-2">
       <h2 class="text-xl font-semibold text-gray-900">Add Video</h2>
-      <p class="text-sm text-gray-500">シリーズ未登録の動画を追加し、必要に応じて順序も指定します。</p>
+      <p class="text-sm text-gray-500">Add videos not yet in this series and optionally set their order.</p>
     </div>
     {% if available_videos %}
       <form method="post" action="/admin/series/{{ series['id'] }}/videos/add" class="grid gap-4 lg:grid-cols-[1.4fr_0.6fr_auto]">

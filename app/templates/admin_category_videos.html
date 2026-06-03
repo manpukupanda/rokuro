@@ -1,6 +1,6 @@
-{% extends "base.html" %}
+{% extends "admin_base.html" %}
 {% block title %}Category: {{ category['name'] }} - Rokuro{% endblock %}
-{% block content %}
+{% block admin_content %}
 <section class="space-y-8">
   <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
     <div class="space-y-2">
@@ -11,7 +11,7 @@
         Back to Categories
       </a>
       <h1 class="text-3xl font-semibold tracking-tight text-gray-900">Category: {{ category['name'] }}</h1>
-      <p class="text-sm text-gray-500">カテゴリに属する動画の追加と解除を行います。</p>
+      <p class="text-sm text-gray-500">Add or remove videos in this category.</p>
     </div>
   </div>
 
@@ -63,7 +63,7 @@
   <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
     <div class="mb-6 space-y-2">
       <h2 class="text-xl font-semibold text-gray-900">Add Video</h2>
-      <p class="text-sm text-gray-500">未割り当ての動画からカテゴリへ追加します。</p>
+      <p class="text-sm text-gray-500">Add videos from the unassigned list to this category.</p>
     </div>
     {% if available_videos %}
       <form method="post" action="/admin/categories/{{ category['id'] }}/videos/add" class="flex flex-col gap-4 sm:flex-row">
