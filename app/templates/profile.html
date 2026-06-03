@@ -1,40 +1,44 @@
 {% extends "base.html" %}
 {% block title %}My Profile - Rokuro{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">My Profile</h1>
-<div class="row g-3">
-  <div class="col-md-6">
-    <div class="card">
-      <div class="card-body">
-        <h2 class="h5">Display Name</h2>
-        <form method="post" action="/profile/display-name">
-          <div class="mb-3">
-            <label class="form-label" for="display_name">Display Name</label>
-            <input class="form-control" id="display_name" name="display_name" value="{{ user['display_name'] }}" required>
-          </div>
-          <button class="btn btn-primary" type="submit">Update Display Name</button>
-        </form>
-      </div>
-    </div>
+<section class="space-y-8">
+  <div class="space-y-2">
+    <h1 class="text-3xl font-semibold tracking-tight text-gray-900">My Profile</h1>
+    <p class="text-sm text-gray-500">表示名の変更とパスワード更新をこの画面から行えます。</p>
   </div>
 
-  <div class="col-md-6">
-    <div class="card">
-      <div class="card-body">
-        <h2 class="h5">Change Password</h2>
-        <form method="post" action="/profile/password">
-          <div class="mb-3">
-            <label class="form-label" for="current_password">Current Password</label>
-            <input class="form-control" id="current_password" name="current_password" type="password" required>
-          </div>
-          <div class="mb-3">
-            <label class="form-label" for="new_password">New Password</label>
-            <input class="form-control" id="new_password" name="new_password" type="password" minlength="8" required>
-          </div>
-          <button class="btn btn-primary" type="submit">Change Password</button>
-        </form>
+  <div class="grid gap-6 xl:grid-cols-2">
+    <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+      <div class="mb-6 space-y-2">
+        <h2 class="text-xl font-semibold text-gray-900">Display Name</h2>
+        <p class="text-sm text-gray-500">他の画面で表示される名前を更新します。</p>
       </div>
-    </div>
+      <form method="post" action="/profile/display-name" class="space-y-6">
+        <div>
+          <label class="mb-2 block text-sm font-medium text-gray-900" for="display_name">Display Name</label>
+          <input class="block w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:ring-blue-500" id="display_name" name="display_name" value="{{ user['display_name'] }}" required>
+        </div>
+        <button class="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-200" type="submit">Update Display Name</button>
+      </form>
+    </section>
+
+    <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+      <div class="mb-6 space-y-2">
+        <h2 class="text-xl font-semibold text-gray-900">Change Password</h2>
+        <p class="text-sm text-gray-500">更新後は再ログインが必要になります。</p>
+      </div>
+      <form method="post" action="/profile/password" class="space-y-6">
+        <div>
+          <label class="mb-2 block text-sm font-medium text-gray-900" for="current_password">Current Password</label>
+          <input class="block w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:ring-blue-500" id="current_password" name="current_password" type="password" required>
+        </div>
+        <div>
+          <label class="mb-2 block text-sm font-medium text-gray-900" for="new_password">New Password</label>
+          <input class="block w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:ring-blue-500" id="new_password" name="new_password" type="password" minlength="8" required>
+        </div>
+        <button class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-200" type="submit">Change Password</button>
+      </form>
+    </section>
   </div>
-</div>
+</section>
 {% endblock %}

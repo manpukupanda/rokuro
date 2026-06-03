@@ -1,44 +1,88 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="h-full bg-gray-50">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Rokuro{% endblock %}</title>
-  <link href="/static/vendor/bootstrap/5.3.8/css/bootstrap.min.css" rel="stylesheet">
-  <link href="/static/app.css" rel="stylesheet">
+  <link href="/static/vendor/tailwind/3.4.17/flowbite.min.css" rel="stylesheet">
 </head>
-<body>
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
-  <div class="container">
-    <a class="navbar-brand" href="/">Rokuro</a>
-    <div class="ms-auto d-flex gap-2 align-items-center">
-      {% if current_user %}
-        <span class="text-light small">{{ current_user['display_name'] }} ({{ current_user['role'] }})</span>
-        <a class="btn btn-outline-light btn-sm" href="/profile">My Profile</a>
-        {% if current_user['role'] == 'admin' %}
-          <a class="btn btn-outline-warning btn-sm" href="/admin/users">Admin: Users</a>
-          <a class="btn btn-outline-warning btn-sm" href="/admin/videos">Admin: Videos</a>
-          <a class="btn btn-outline-warning btn-sm" href="/admin/categories">Admin: Categories</a>
-          <a class="btn btn-outline-warning btn-sm" href="/admin/series">Admin: Series</a>
-        {% endif %}
-        <form method="post" action="/logout" class="d-inline">
-          <button class="btn btn-light btn-sm" type="submit">Logout</button>
-        </form>
-      {% else %}
-        <a class="btn btn-light btn-sm" href="/login">Login</a>
-      {% endif %}
+<body class="min-h-full bg-gray-50 text-gray-900 antialiased">
+<div class="min-h-screen">
+  <header class="border-b border-gray-200 bg-white/90 shadow-sm backdrop-blur">
+    <div class="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <a href="/" class="inline-flex items-center gap-3">
+          <span class="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-sm">
+            <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M4 7h16M4 12h10M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </span>
+          <span class="space-y-1">
+            <span class="block text-lg font-semibold tracking-tight text-gray-900">Rokuro</span>
+            <span class="block text-sm text-gray-500">Private streaming control panel</span>
+          </span>
+        </a>
+        <div class="flex flex-col gap-3 lg:items-end">
+          {% if current_user %}
+            <div class="flex flex-wrap items-center gap-2 text-sm text-gray-500">
+              <span class="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1.5 text-gray-700">
+                <svg class="h-4 w-4 text-gray-500" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M15 19a4 4 0 0 0-6 0M9 10a3 3 0 1 1 6 0a3 3 0 0 1-6 0ZM4 12a8 8 0 1 0 16 0a8 8 0 0 0-16 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                {{ current_user['display_name'] }} · {{ current_user['role'] }}
+              </span>
+            </div>
+          {% endif %}
+          <nav class="flex flex-wrap items-center gap-2">
+            <a href="/" class="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:border-blue-200 hover:text-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100">Browse</a>
+            {% if current_user %}
+              <a href="/profile" class="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:border-blue-200 hover:text-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100">My Profile</a>
+              {% if current_user['role'] == 'admin' %}
+                <a href="/admin/users" class="inline-flex items-center justify-center rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100 focus:outline-none focus:ring-4 focus:ring-indigo-100">Users</a>
+                <a href="/admin/videos" class="inline-flex items-center justify-center rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100 focus:outline-none focus:ring-4 focus:ring-indigo-100">Videos</a>
+                <a href="/admin/categories" class="inline-flex items-center justify-center rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100 focus:outline-none focus:ring-4 focus:ring-indigo-100">Categories</a>
+                <a href="/admin/series" class="inline-flex items-center justify-center rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100 focus:outline-none focus:ring-4 focus:ring-indigo-100">Series</a>
+              {% endif %}
+              <form method="post" action="/logout">
+                <button class="inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800 focus:outline-none focus:ring-4 focus:ring-gray-200" type="submit">Logout</button>
+              </form>
+            {% else %}
+              <a href="/login" class="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-200">Login</a>
+            {% endif %}
+          </nav>
+        </div>
+      </div>
     </div>
-  </div>
-</nav>
+  </header>
 
-<div class="container">
-  {% for flash in flashes %}
-    <div class="alert alert-{{ flash['level'] }}" role="alert">{{ flash['message'] }}</div>
-  {% endfor %}
-  {% block content %}{% endblock %}
+  <main class="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
+    {% for flash in flashes %}
+      {% if flash['level'] == 'success' %}
+        <div class="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-800 shadow-sm" role="alert">
+          <svg class="mt-0.5 h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="m5 13 4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <span>{{ flash['message'] }}</span>
+        </div>
+      {% elif flash['level'] == 'danger' %}
+        <div class="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-800 shadow-sm" role="alert">
+          <svg class="mt-0.5 h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <span>{{ flash['message'] }}</span>
+        </div>
+      {% else %}
+        <div class="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-800 shadow-sm" role="alert">
+          <svg class="mt-0.5 h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 8v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <span>{{ flash['message'] }}</span>
+        </div>
+      {% endif %}
+    {% endfor %}
+    {% block content %}{% endblock %}
+  </main>
 </div>
-
-<script src="/static/vendor/bootstrap/5.3.8/js/bootstrap.bundle.min.js"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

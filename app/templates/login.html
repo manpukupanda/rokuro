@@ -1,24 +1,41 @@
 {% extends "base.html" %}
 {% block title %}Login - Rokuro{% endblock %}
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-md-5">
-    <div class="card">
-      <div class="card-body">
-        <h1 class="h4 mb-3">Login</h1>
-        <form method="post" action="/login">
-          <div class="mb-3">
-            <label class="form-label" for="account">Account</label>
-            <input class="form-control" id="account" name="account" required>
-          </div>
-          <div class="mb-3">
-            <label class="form-label" for="password">Password</label>
-            <input class="form-control" id="password" name="password" type="password" required>
-          </div>
-          <button class="btn btn-primary" type="submit">Login</button>
-        </form>
+<section class="mx-auto grid w-full max-w-5xl gap-8 lg:grid-cols-[1.1fr_0.9fr]">
+  <div class="flex flex-col justify-center gap-6">
+    <span class="inline-flex w-fit items-center rounded-full bg-blue-100 px-4 py-1.5 text-sm font-medium text-blue-700">Secure access</span>
+    <div class="space-y-4">
+      <h1 class="text-3xl font-semibold tracking-tight text-gray-900 sm:text-4xl">ログインして Rokuro を管理</h1>
+      <p class="max-w-2xl text-base leading-7 text-gray-500">配信一覧の閲覧、再生設定の確認、管理者向けのユーザー・動画メンテナンスを 1 つの画面から扱えます。</p>
+    </div>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <h2 class="text-sm font-semibold text-gray-900">Private streaming</h2>
+        <p class="mt-2 text-sm leading-6 text-gray-500">認証済みユーザーだけが動画一覧と再生 UI にアクセスできます。</p>
+      </div>
+      <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <h2 class="text-sm font-semibold text-gray-900">Admin controls</h2>
+        <p class="mt-2 text-sm leading-6 text-gray-500">管理者はユーザー、動画、カテゴリ、シリーズをまとめて更新できます。</p>
       </div>
     </div>
   </div>
-</div>
+
+  <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+    <div class="mb-6 space-y-2">
+      <h2 class="text-2xl font-semibold text-gray-900">Login</h2>
+      <p class="text-sm text-gray-500">アカウント情報を入力してください。</p>
+    </div>
+    <form method="post" action="/login" class="space-y-6">
+      <div>
+        <label class="mb-2 block text-sm font-medium text-gray-900" for="account">Account</label>
+        <input class="block w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:ring-blue-500" id="account" name="account" required>
+      </div>
+      <div>
+        <label class="mb-2 block text-sm font-medium text-gray-900" for="password">Password</label>
+        <input class="block w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:ring-blue-500" id="password" name="password" type="password" required>
+      </div>
+      <button class="inline-flex w-full items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-200" type="submit">Login</button>
+    </form>
+  </div>
+</section>
 {% endblock %}

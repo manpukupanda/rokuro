@@ -1,75 +1,93 @@
 {% extends "base.html" %}
 {% block title %}Series: {{ series['name'] }} - Rokuro{% endblock %}
 {% block content %}
-<a class="btn btn-outline-secondary btn-sm mb-3" href="/admin/series">&larr; Back to Series</a>
-<h1 class="h3 mb-3">Series: {{ series['name'] }}</h1>
-
-{% if error_message %}
-  <div class="alert alert-danger">{{ error_message }}</div>
-{% endif %}
-
-<h2 class="h5 mt-4">Assigned Videos</h2>
-<p class="small text-muted">Videos are displayed in ascending order of "Order". Leave blank to place at the end.</p>
-{% if assigned_videos %}
-<div class="table-responsive mb-4">
-<table class="table table-sm align-middle">
-  <thead>
-    <tr>
-      <th>Order</th>
-      <th>Title</th>
-      <th>Status</th>
-      <th>Visibility</th>
-      <th>Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for video in assigned_videos %}
-    <tr>
-      <td style="width: 160px;">
-        <form method="post" action="/admin/series/{{ series['id'] }}/videos/update/{{ video['public_id'] }}" class="d-flex gap-1">
-          <input class="form-control form-control-sm" type="number" name="series_order"
-                 value="{{ video['series_order'] if video['series_order'] is not none else '' }}"
-                 placeholder="(last)" style="width: 90px;">
-          <button class="btn btn-sm btn-outline-primary" type="submit">Set</button>
-        </form>
-      </td>
-      <td>{{ video['title'] or video['original_name'] }}</td>
-      <td>{{ video['status'] }}</td>
-      <td>{{ video['visibility'] }}</td>
-      <td>
-        <form method="post" action="/admin/series/{{ series['id'] }}/videos/remove/{{ video['public_id'] }}">
-          <button class="btn btn-sm btn-outline-danger" type="submit">Remove</button>
-        </form>
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-</div>
-{% else %}
-  <p class="text-muted mb-4">No videos assigned yet.</p>
-{% endif %}
-
-<h2 class="h5">Add Video</h2>
-{% if available_videos %}
-<form method="post" action="/admin/series/{{ series['id'] }}/videos/add" class="row g-2 mb-4">
-  <div class="col-md-7">
-    <select class="form-select" name="video_id">
-      {% for video in available_videos %}
-      <option value="{{ video['public_id'] }}">
-        {{ video['title'] or video['original_name'] }} ({{ video['status'] }} / {{ video['visibility'] }})
-      </option>
-      {% endfor %}
-    </select>
+<section class="space-y-8">
+  <div class="space-y-2">
+    <a class="inline-flex items-center gap-2 text-sm font-medium text-gray-500 transition hover:text-blue-700" href="/admin/series">
+      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="m15 18-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+      Back to Series
+    </a>
+    <h1 class="text-3xl font-semibold tracking-tight text-gray-900">Series: {{ series['name'] }}</h1>
+    <p class="text-sm text-gray-500">シリーズに登録された動画の表示順と構成を編集します。</p>
   </div>
-  <div class="col-md-2">
-    <input class="form-control" type="number" name="series_order" placeholder="Order (optional)">
-  </div>
-  <div class="col-md-3">
-    <button class="btn btn-primary w-100" type="submit">Add</button>
-  </div>
-</form>
-{% else %}
-  <p class="text-muted">All available videos are already in this series.</p>
-{% endif %}
+
+  {% if error_message %}
+    <div class="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-800 shadow-sm">
+      <svg class="mt-0.5 h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+      <span>{{ error_message }}</span>
+    </div>
+  {% endif %}
+
+  <section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+    <div class="border-b border-gray-200 px-6 py-5">
+      <h2 class="text-xl font-semibold text-gray-900">Assigned Videos</h2>
+      <p class="mt-2 text-sm text-gray-500">Videos are displayed in ascending order of "Order". Leave blank to place at the end.</p>
+    </div>
+    {% if assigned_videos %}
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200 text-left text-sm text-gray-600">
+          <thead class="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <tr>
+              <th class="px-6 py-4">Order</th>
+              <th class="px-6 py-4">Title</th>
+              <th class="px-6 py-4">Status</th>
+              <th class="px-6 py-4">Visibility</th>
+              <th class="px-6 py-4">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200 bg-white">
+            {% for video in assigned_videos %}
+            <tr class="align-top">
+              <td class="px-6 py-4">
+                <form method="post" action="/admin/series/{{ series['id'] }}/videos/update/{{ video['public_id'] }}" class="flex min-w-[11rem] gap-2">
+                  <input class="block w-24 rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500" type="number" name="series_order"
+                         value="{{ video['series_order'] if video['series_order'] is not none else '' }}"
+                         placeholder="(last)">
+                  <button class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-200" type="submit">Set</button>
+                </form>
+              </td>
+              <td class="px-6 py-4 font-medium text-gray-900">{{ video['title'] or video['original_name'] }}</td>
+              <td class="px-6 py-4 text-gray-700">{{ video['status'] }}</td>
+              <td class="px-6 py-4 text-gray-700">{{ video['visibility'] }}</td>
+              <td class="px-6 py-4">
+                <form method="post" action="/admin/series/{{ series['id'] }}/videos/remove/{{ video['public_id'] }}">
+                  <button class="inline-flex items-center justify-center rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100 focus:outline-none focus:ring-4 focus:ring-red-100" type="submit">Remove</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="px-6 py-8 text-sm text-gray-500">No videos assigned yet.</div>
+    {% endif %}
+  </section>
+
+  <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+    <div class="mb-6 space-y-2">
+      <h2 class="text-xl font-semibold text-gray-900">Add Video</h2>
+      <p class="text-sm text-gray-500">シリーズ未登録の動画を追加し、必要に応じて順序も指定します。</p>
+    </div>
+    {% if available_videos %}
+      <form method="post" action="/admin/series/{{ series['id'] }}/videos/add" class="grid gap-4 lg:grid-cols-[1.4fr_0.6fr_auto]">
+        <select class="block w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500" name="video_id">
+          {% for video in available_videos %}
+          <option value="{{ video['public_id'] }}">
+            {{ video['title'] or video['original_name'] }} ({{ video['status'] }} / {{ video['visibility'] }})
+          </option>
+          {% endfor %}
+        </select>
+        <input class="block w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:ring-blue-500" type="number" name="series_order" placeholder="Order (optional)">
+        <button class="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-200" type="submit">Add</button>
+      </form>
+    {% else %}
+      <p class="text-sm text-gray-500">All available videos are already in this series.</p>
+    {% endif %}
+  </section>
+</section>
 {% endblock %}
