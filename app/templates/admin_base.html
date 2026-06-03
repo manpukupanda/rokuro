@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex flex-col gap-6 lg:flex-row">
+  <aside class="lg:sticky lg:top-8 lg:h-fit lg:w-64">
+    <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+      <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Admin</h2>
+      <ul class="space-y-2 text-sm font-medium">
+        {% set path = request.url.path %}
+        <li>
+          <a href="/admin/users" class="flex items-center rounded-lg px-3 py-2 transition {% if path.startswith('/admin/users') %}bg-indigo-100 text-indigo-700{% else %}text-gray-700 hover:bg-gray-100{% endif %}">Users</a>
+        </li>
+        <li>
+          <a href="/admin/videos" class="flex items-center rounded-lg px-3 py-2 transition {% if path.startswith('/admin/videos') %}bg-indigo-100 text-indigo-700{% else %}text-gray-700 hover:bg-gray-100{% endif %}">Videos</a>
+        </li>
+        <li>
+          <a href="/admin/categories" class="flex items-center rounded-lg px-3 py-2 transition {% if path.startswith('/admin/categories') %}bg-indigo-100 text-indigo-700{% else %}text-gray-700 hover:bg-gray-100{% endif %}">Categories</a>
+        </li>
+        <li>
+          <a href="/admin/series" class="flex items-center rounded-lg px-3 py-2 transition {% if path.startswith('/admin/series') %}bg-indigo-100 text-indigo-700{% else %}text-gray-700 hover:bg-gray-100{% endif %}">Series</a>
+        </li>
+      </ul>
+    </div>
+  </aside>
+  <section class="min-w-0 flex-1">
+    {% block admin_content %}{% endblock %}
+  </section>
+</div>
+{% endblock %}

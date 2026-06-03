@@ -1,16 +1,16 @@
-{% extends "base.html" %}
+{% extends "admin_base.html" %}
 {% block title %}Admin Users - Rokuro{% endblock %}
-{% block content %}
+{% block admin_content %}
 <section class="space-y-8">
   <div class="space-y-2">
     <h1 class="text-3xl font-semibold tracking-tight text-gray-900">User Management</h1>
-    <p class="text-sm text-gray-500">管理アカウントと一般ユーザーの作成、無効化、削除、パスワード再設定を行います。</p>
+    <p class="text-sm text-gray-500">Create, disable, delete, and reset passwords for admin and standard user accounts.</p>
   </div>
 
   <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
     <div class="mb-6 space-y-2">
       <h2 class="text-xl font-semibold text-gray-900">Create User</h2>
-      <p class="text-sm text-gray-500">新しいアカウントを即時追加します。</p>
+      <p class="text-sm text-gray-500">Add a new account immediately.</p>
     </div>
     <form method="post" action="/admin/users/create" class="grid gap-4 xl:grid-cols-[1.2fr_1.2fr_0.8fr_1.2fr_auto]">
       <input class="block w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:ring-blue-500" name="account" placeholder="Account" required>
